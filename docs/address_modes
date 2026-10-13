@@ -1,0 +1,49 @@
+UPCODE ---> MEMORY ---> 6502 ---> MEMORY
+
+
+>>> 6502
+- A struct with its registers.
+
+>>> Memory
+- An array, each storing 1 byte.
+
+
+
+IMMEDIATE ADDRESSING
+
+#Immediate
+ex: LDA #$42
+The value $42 itself is the value the Accumulator will store.
+
+#Zero Page
+ex: LDA $20
+That means $20 is a memory address, not the value itself.
+The first 256 bits (0x0000 - 0x00FF), this area is called 'Zero Page'
+
+#Zero Page,X
+ex: LDA $20,X
+If X=$05 and memory[$20], then: $20 + X = $20 + $05 = $25, resulting in
+LDA $25 (memory)
+
+#Absolute,X
+Same Idea with Zero Page,X.
+
+#Absolute,Y
+Same Idea, but using Y.
+
+#Absolute
+ex: LDA $1234
+This instruction has 3 bytes, the OPCODE, the 34(low) and 12(high).
+
+
+#(Indirect,X)
+ex: LDA ($20,X)
+If X=$04
+	First, $20 + $04 = $24
+Suppose memory[$24]=$00 and memory[$25]=$80, they form the address $8000
+Then A=memory[$8000]
+
+#(Indirect),Y
+Almost equal to (Indirect,X), but the address is formed first, and then is added with the Y value.
+
+
