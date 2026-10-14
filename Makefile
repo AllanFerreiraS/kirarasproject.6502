@@ -12,7 +12,8 @@ LINKER_CONFIG = tests/linker.cfg
 SRC = \
 	./main.c \
 	./src/processor_6502.c \
-	./src/memory_16.c
+	./src/memory_16.c \
+	./src/tui.c
 
 OUT = ./bin/6502
 

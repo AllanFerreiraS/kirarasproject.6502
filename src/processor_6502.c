@@ -144,14 +144,14 @@ void execute_opcode(processor_6502 * processor, memory_16 * memory)
 
 	opcode_entry execute = op_table[opcode];
 	if (execute.op == NULL) {
-		printf("UNDEFINED OPCODE...\n");
+		//printf("UNDEFINED OPCODE...\n");
 		return;
 	}
-	printf("Executing %s\n", execute.op_name);
+	//printf("Executing %s\n", execute.op_name);
 	bits_16 address = execute.mode(processor, memory);
 	execute.op(processor, memory, address);
 	processor->cycles += execute.cycle;
 
-	printf(">> A:%02x  X:%02x  Y:%02x  P:%02x\n", processor->reg_a, processor->reg_x, processor->reg_y, processor->reg_p);
+	//printf(">> A:%02x  X:%02x  Y:%02x  P:%02x\n", processor->reg_a, processor->reg_x, processor->reg_y, processor->reg_p);
 }
 

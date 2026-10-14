@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include "./include/processor_6502.h"
 #include "./include/memory_16.h"
+#include "./include/tui.h"
 
 int main()
 {
@@ -12,18 +13,25 @@ int main()
 	write_rom(&memory, "./tests/rom.bin");
 	print_memory(&memory);
 	init_6502(&cpu);
+	
+	terminal_init();
 
-	printf("\n========== 6502 ==========\n");
 	while(1) {
 		execute_opcode(&cpu, &memory);
-		printf(":");
+		
+		//drawn_zero_page(&memory);
+		monitor_emulator(&memory, &cpu);
+		
+		//printf(":");
 		scanf("%c", &stop_flag);
 		if (stop_flag == 'q')
 			break;
 	}
+	
+	terminal_cleanup();
 
 	printf("\n========== RESULTS ==========\n");
-	print_zero_page(&memory);
+	//print_zero_page(&memory);
 	print_memory(&memory);
 	printf("\n");
 	printf("PC:%x\n", cpu.reg_pc);
