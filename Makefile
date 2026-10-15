@@ -13,7 +13,8 @@ SRC = \
 	./main.c \
 	./src/processor_6502.c \
 	./src/memory_16.c \
-	./src/tui.c
+	./src/terminal_ui.c \
+	./src/debugger.c
 
 OUT = ./bin/6502
 

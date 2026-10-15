@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include "./include/processor_6502.h"
 #include "./include/memory_16.h"
-#include "./include/tui.h"
+#include "./include/debugger.h"
 
 int main()
 {
@@ -14,21 +14,20 @@ int main()
 	print_memory(&memory);
 	init_6502(&cpu);
 	
-	terminal_init();
+	debugger_terminal_prepare();
 
 	while(1) {
-		execute_opcode(&cpu, &memory);
-		
+
 		//drawn_zero_page(&memory);
-		monitor_emulator(&memory, &cpu);
-		
-		//printf(":");
+		debugger_run(&memory, &cpu);
+
+		execute_opcode(&cpu, &memory);		
 		scanf("%c", &stop_flag);
 		if (stop_flag == 'q')
 			break;
 	}
 	
-	terminal_cleanup();
+	debugger_terminal_finish();
 
 	printf("\n========== RESULTS ==========\n");
 	//print_zero_page(&memory);
