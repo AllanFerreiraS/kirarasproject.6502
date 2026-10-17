@@ -20,17 +20,6 @@ void write_rom(memory_16 * memory, const char *rom_bin)
 	fclose(file);
 }
 
-void print_memory(memory_16 * memory)
-{
-
-	for (uint32_t i = 0x8000; i < 0x8090; i++) {	
-		if (i % 16 == 0)
-			printf("\n%x\t", i);
-		printf("%02x  ", memory->data[i]);
-	}
-	printf("\n");
-}
-
 void print_zero_page(memory_16 * memory)
 {
 	for (uint16_t i = 0x00; i < 0x100; i++) {

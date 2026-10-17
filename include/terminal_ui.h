@@ -11,8 +11,12 @@
 
 #define COLOR_BACK_RED		"41"
 #define COLOR_BACK_CYAN		"46"
+#define COLOR_BACK_GREEN	"42"
+#define COLOR_BACK_BLUE		"44"
 
 #define ERASE_ENTIRE_SCREEN	"2J"
+
+// Public Functions
 
 void tui_move_cursor(int step, char command);
 void tui_move_cursor_home();

@@ -1,2 +1,6 @@
-./bin/6502
 .git
+bin/
+/tests/rom.bin
+/tests/rom.o
+/tests/singlesteptests/v1/
+

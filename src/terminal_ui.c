@@ -40,6 +40,9 @@ void tui_terminal_color_default()
 	printf("%c[0m", ESC);
 }
 
+/*
+ * Description: Config termial to start using scape sequences.
+ */
 void tui_terminal_init()
 {
 	printf("\033[?1049h");
@@ -48,9 +51,12 @@ void tui_terminal_init()
     	fflush(stdout);
 }
 
+/*
+ * Description: Make terminal go back to normal. Use it when
+ *	scape sequences will further not be used.
+ */
 void tui_terminal_cleanup()
 {
     	printf("\033[?1049l");
    	fflush(stdout);
 }
-

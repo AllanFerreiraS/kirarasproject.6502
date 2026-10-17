@@ -27,6 +27,7 @@ typedef struct 	{
 	bits_64 cycles;
 } processor_6502;
 
+
 // Public Functions
 void init_6502(processor_6502 * processor);
 void execute_opcode(processor_6502 * processor, memory_16 * memory);

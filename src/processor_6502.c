@@ -12,7 +12,7 @@
 #define FLAG_CAR	0x01
 
 /*
- * Description: Function Pointer to handle Addressing Modes and Opcodes.
+ * Description: Function Pointers to handle Addressing Modes and Opcodes.
  */
 typedef bits_16	(*addr_fn) (processor_6502 * processor, memory_16 * memory);
 typedef void	(*op_fn) (processor_6502 * processor, memory_16 * memory, bits_16 addr);
@@ -28,33 +28,49 @@ typedef struct {
 } opcode_entry;
 
 // Addressing Mode Functions
-bits_16 mode_immediate(processor_6502 * processor, memory_16 * memory);
-bits_16 mode_zero_page(processor_6502 * processor, memory_16 * memory);
-bits_16 mode_zero_page_x(processor_6502 * processor, memory_16 * memory);
+static bits_16 mode_immediate(processor_6502 * processor, memory_16 * memory);
+static bits_16 mode_zero_page(processor_6502 * processor, memory_16 * memory);
+static bits_16 mode_zero_page_x(processor_6502 * processor, memory_16 * memory);
+static bits_16 mode_absolute(processor_6502 * processor, memory_16 * memory);
 
 // OPCODE Functions
-void op_lda(processor_6502 * processor, memory_16 * memory, bits_16 addr);
-void op_sta(processor_6502 * processor, memory_16 * memory, bits_16 addr);
-void op_ldx(processor_6502 * processor, memory_16 * memory, bits_16 addr);
+static void op_lda(processor_6502 * processor, memory_16 * memory, bits_16 addr);
+static void op_sta(processor_6502 * processor, memory_16 * memory, bits_16 addr);
+static void op_ldx(processor_6502 * processor, memory_16 * memory, bits_16 addr);
 
 // Flag
-void set_flag(processor_6502 * processor, bits_8 flag_mask, int condition);
-void set_nz(processor_6502 * processor, bits_8 data);
+static void set_flag(processor_6502 * processor, bits_8 flag_mask, int condition);
+static void set_nz(processor_6502 * processor, bits_8 data);
+
+// Others
+static uint16_t little_endian_solver(uint16_t low, uint16_t high);
 
 /*
  * Description: A table containing all OPCODES
  */
 static const opcode_entry op_table[NUM_OPCODES] = {
-	[0xA9]	=	{ "LDA", op_lda, mode_immediate, 	2 },
-	[0xA5]	=	{ "LDA", op_lda, mode_zero_page, 	3 },
-	[0xB5]	=	{ "LDA", op_lda, mode_zero_page_x, 	4 },
-	[0x85]	=	{ "STA", op_sta, mode_zero_page,	3 },
-	[0x95] 	=	{ "STA", op_sta, mode_zero_page_x,	4 },
-	[0xA2]	=	{ "LDX", op_ldx, mode_immediate, 	2 },
-	[0xA6]	=	{ "LDX", op_ldx, mode_zero_page, 	3 }
+	[0xA9]	=	{ "LDA", op_lda, mode_immediate, 	2 }, // PASSED
+	[0xA5]	=	{ "LDA", op_lda, mode_zero_page, 	3 }, // PASSED
+	[0xB5]	=	{ "LDA", op_lda, mode_zero_page_x, 	4 }, // PASSED
+	[0xAD]	=	{ "LDA", op_lda, mode_absolute,		4 }, // PASSED
+	[0x85]	=	{ "STA", op_sta, mode_zero_page,	3 }, // PASSED 
+	[0x95] 	=	{ "STA", op_sta, mode_zero_page_x,	4 }, // PASSED 
+	[0xA2]	=	{ "LDX", op_ldx, mode_immediate, 	2 }, // PASSED
+	[0xA6]	=	{ "LDX", op_ldx, mode_zero_page, 	3 }  // PASSED
 };
 
-void set_flag(processor_6502 * processor, bits_8 flag_mask, int condition)
+static uint16_t little_endian_solver(uint16_t low, uint16_t high)
+{
+	return ( (high << 8) | low );
+}
+
+
+// >> FLAGS <<
+
+/*
+ * Description: Set flag using the MASK and the condition as parameter
+ */
+static void set_flag(processor_6502 * processor, bits_8 flag_mask, int condition)
 {
 	if (condition)
 		processor->reg_p |= flag_mask;
@@ -62,16 +78,21 @@ void set_flag(processor_6502 * processor, bits_8 flag_mask, int condition)
 		processor->reg_p &= (~flag_mask);
 }
 
-void set_nz(processor_6502 * processor, bits_8 data)
+/*
+ * Description: Set ZERO FLAG and NEGATIVE FLAG
+ */
+static void set_nz(processor_6502 * processor, bits_8 data)
 {
 	set_flag(processor, FLAG_ZER, (data == 0));
-	set_flag(processor, FLAG_NEG, ((data % FLAG_NEG) > 0));
+	set_flag(processor, FLAG_NEG, ((data & FLAG_NEG) > 0));
 }
+
+// >> ADDRESSING MODES <<
 
 /*
  * Description: Immediate Mode Addressing.
  */
-bits_16 mode_immediate(processor_6502 * processor, memory_16 * memory) 
+static bits_16 mode_immediate(processor_6502 * processor, memory_16 * memory) 
 {
 	bits_16 addr = processor->reg_pc;
 	processor->reg_pc++;
@@ -81,7 +102,7 @@ bits_16 mode_immediate(processor_6502 * processor, memory_16 * memory)
 /*
  * Description: Zero Page Mode Addressing.
  */
-bits_16 mode_zero_page(processor_6502 * processor, memory_16 * memory)
+static bits_16 mode_zero_page(processor_6502 * processor, memory_16 * memory)
 {
 	bits_16 addr = memory_read(memory, processor->reg_pc);
 	processor->reg_pc++;
@@ -91,23 +112,42 @@ bits_16 mode_zero_page(processor_6502 * processor, memory_16 * memory)
 /*
  * Description: Zero Page Mode + Register X.
  */
-bits_16 mode_zero_page_x(processor_6502 * processor, memory_16 * memory)
+static bits_16 mode_zero_page_x(processor_6502 * processor, memory_16 * memory)
 {
-	bits_16 addr = mode_zero_page(processor, memory);
-	addr += processor->reg_x;
+	bits_16 addr = memory_read(memory, processor->reg_pc);
+	addr = (addr + processor->reg_x) & 0xFF;
+	processor->reg_pc++;
 	return addr;
 }
 
 /*
+ * Description: Absolute. Low Addr first, High addr later.
+ */
+static bits_16 mode_absolute(processor_6502 * processor, memory_16 * memory)
+{
+	bits_16 low = memory_read(memory, processor->reg_pc);
+	processor->reg_pc++;
+	bits_16 high = memory_read(memory, processor->reg_pc);
+	bits_16 addr = little_endian_solver(low, high);	
+	processor->reg_pc++;
+	return addr;
+}
+
+// >> OPCODES <<
+
+/*
  * Description: Loads a value to register A.
  */
-void op_lda(processor_6502 * processor, memory_16 * memory, bits_16 addr)
+static void op_lda(processor_6502 * processor, memory_16 * memory, bits_16 addr)
 {
 	processor->reg_a = memory_read(memory, addr);
 	set_nz(processor, processor->reg_a);
 }
 
-void op_sta(processor_6502 * processor, memory_16 * memory, bits_16 addr)
+/*
+ * Description: Store the value of register A in a memory address.
+ */
+static void op_sta(processor_6502 * processor, memory_16 * memory, bits_16 addr)
 {
 	memory_write(memory, addr, processor->reg_a);
 }
@@ -115,16 +155,14 @@ void op_sta(processor_6502 * processor, memory_16 * memory, bits_16 addr)
 /*
  * Description: Loads a value to register X.
  */
-void op_ldx(processor_6502 * processor, memory_16 * memory, bits_16 addr)
+static void op_ldx(processor_6502 * processor, memory_16 * memory, bits_16 addr)
 {
 	processor->reg_x = memory_read(memory, addr);
 	set_nz(processor, processor->reg_x);
 }
 
-/*
- * Description: Set all 6502 registers to default values
- * before the 6502 simulation starts.
- */
+// >> PUBLIC FUNCTIONS <<
+
 void init_6502(processor_6502 * processor)
 {	
 	processor->reg_a  =	0X00;
