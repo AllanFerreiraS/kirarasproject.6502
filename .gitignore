@@ -1,6 +1,6 @@
 .git
-bin/
-/tests/rom.bin
+bin/*
+/tests/*.bin
 /tests/rom.o
-/tests/singlesteptests/v1/
-
+/tests/./run_singlesteptests
+/tests/singlesteptests/v1/*.json
