@@ -17,6 +17,10 @@ typedef uint64_t	bits_64;
 //	2: Interrupt Disable
 //	1: Zero
 //	0: Carry
+
+// Decimal. Affects the D Flag: CLD, PLP, RTI, and SED. (BRK)
+// Decimal. Affected by D flag: ADC and SBC
+
 typedef struct 	{	
 	bits_8	reg_a;	
 	bits_8 	reg_x;	

@@ -23,9 +23,9 @@ typedef struct {
 } feedback;
 
 // Others Function
-static char * allocate_message_error(void);
-static void clean_memory(memory_16 * memory); // MUDAR DEPOIS
-static char * get_json_content(const char * filename);
+static char	* allocate_message_error(void);
+static void 	clean_memory(memory_16 * memory); // MUDAR DEPOIS
+static char 	* get_json_content(const char * filename);
 static void 	set_reg_error(const char * reg_name, uint64_t got, uint64_t expected, char **error_message);
 
 // JSON ACCESS
@@ -40,11 +40,21 @@ static uint8_t compare_memory(memory_16 * m_mem, memory_16 * m_expected, char **
 static uint8_t compare_cycles(processor_6502 * processor, uint64_t cycles, char **error_message);
 
 // Init process
-static void free_feedbacks(feedback *f, uint16_t size);
-static void print_results(passed_failed_counter counter, feedback *feedbacks);
-static uint8_t init_test(processor_6502 * p_cpu, processor_6502 * p_expected, memory_16 * m_mem, memory_16 * m_expected, cJSON **root);
+static void 	free_feedbacks(feedback *f, uint16_t size);
+static void 	print_results(passed_failed_counter counter, feedback *feedbacks);
+static uint8_t 	init_test(processor_6502 * p_cpu, processor_6502 * p_expected, memory_16 * m_mem, memory_16 * m_expected, cJSON **root);
 
 
+void u8_decimal_to_binary_string(uint8_t v, char * b)
+{
+	uint8_t i = 0;
+	uint8_t mask = 1;
+	for (; i < 8; i++) {
+		b[i] = ( (v & (mask << (7-i))) > 0 ) ? '1' : '0';
+	}
+	b[i] = '\0';
+
+}
 
 static char * allocate_message_error(void)
 {
@@ -192,10 +202,19 @@ static uint8_t store_json_memory_content(memory_16 * memory, cJSON **test, const
 static void set_reg_error(const char * reg_name, uint64_t got, uint64_t expected, char **error_message)
 {
 	*error_message = allocate_message_error();
-	if (*error_message == NULL)
-		return;
+	char got_bin[9] = {0};
+	char expected_bin[9] = {0};
 
-	snprintf(*error_message, ERROR_MESSAGE_SIZE, "PROCESSOR REG_%s: got %lu expected %lu.\n", reg_name, got, expected);
+	if (*error_message == NULL)
+		return;	
+	if ( strcmp(reg_name,"P") == 0 ) {
+		u8_decimal_to_binary_string((uint8_t) got, got_bin);
+		u8_decimal_to_binary_string((uint8_t) expected, expected_bin);
+		snprintf(*error_message, ERROR_MESSAGE_SIZE, "PROCESSOR REG_%s: got %lu (0b%s) expected %lu (0b%s).\n", reg_name, got, got_bin, expected, expected_bin);
+		return;
+	} else {
+		snprintf(*error_message, ERROR_MESSAGE_SIZE, "PROCESSOR REG_%s: got %lu expected %lu.\n", reg_name, got, expected);
+	}
 	return;	
 }
 

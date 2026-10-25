@@ -1,2 +1,3 @@
 .segment "CODE"
-    LDA $80f0
+	LDX #$01
+	LDA $80ef,X
