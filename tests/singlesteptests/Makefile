@@ -3,8 +3,9 @@ CFLAGS = -Wall -Wextra -g -fsanitize=address -Iprocessor
 
 SRC = \
 	./singlesteptests.c \
-	../../src/processor_6502.c \
-	../../src/memory_16.c \
+	../../emulators/raw/raw.c \
+	../../src/hardwares/processor_6502.c \
+	../../src/hardwares/memory_16.c \
 	../../thirdparty/cJson/cJSON.c
 
 OUT = ./run_singlesteptests

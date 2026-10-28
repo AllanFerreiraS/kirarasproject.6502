@@ -10,11 +10,10 @@ ROM = tests/rom.bin
 LINKER_CONFIG = tests/linker.cfg
 
 SRC = \
-	./main.c \
-	./src/processor_6502.c \
-	./src/memory_16.c \
-	./src/terminal_ui.c \
-	./src/debugger.c
+	./kirarasproject.6502.c \
+	./src/hardwares/processor_6502.c \
+	./src/hardwares/memory_16.c \
+	./emulators/raw/raw.c
 
 OUT = ./bin/6502
 

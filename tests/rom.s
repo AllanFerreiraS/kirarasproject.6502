@@ -1,3 +1,5 @@
 .segment "CODE"
-	LDX #$01
-	LDA $80ef,X
+	LDA #$10
+	LDA #$20
+	LDA #$30
+	LDA #$40

@@ -1,8 +1,9 @@
 #ifndef PROCESSOR_6502_H_
 #define PROCESSOR_6502_H_
 
-#include <stdint.h>
 #include "memory_16.h"
+#include "./../buses.h"
+#include <stdint.h>
 
 typedef uint8_t 	bits_8;
 typedef uint16_t	bits_16;
@@ -13,7 +14,7 @@ typedef uint64_t	bits_64;
 //	6: Overflow
 //	5: (No CPU Effect | Always 1)
 //	4: (No CPU Effect | Break Flag)
-//	3: Decimal
+//	3: Decimal			Thankfully NES does not use this SH%T.
 //	2: Interrupt Disable
 //	1: Zero
 //	0: Carry
@@ -27,8 +28,10 @@ typedef struct 	{
 	bits_8 	reg_y;
 	bits_8	reg_sp;		//Stack Pointer
 	bits_8	reg_p;		//Status Register
+	bits_8  read_write;	//0 for read, 1 for write
 	bits_16	reg_pc;		//Program Counter
 	bits_64 cycles;
+	buses	bus;	
 } processor_6502;
 
 

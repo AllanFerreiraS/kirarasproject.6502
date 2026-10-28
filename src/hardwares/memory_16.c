@@ -1,4 +1,4 @@
-#include "../include/memory_16.h"
+#include "./../../include/hardwares/memory_16.h"
 #include <stdio.h>
 
 uint8_t memory_read(memory_16 * memory, uint16_t address)
@@ -16,6 +16,8 @@ void write_rom(memory_16 * memory, const char *rom_bin)
 {
 
 	FILE *file = fopen(rom_bin, "rb");
+	if (file == NULL)
+		printf("Errore\n");
 	fread(&(memory->data[0x8000]), 1, MEMORY_16_SIZE - 0x8000, file);
 	fclose(file);
 }

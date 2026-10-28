@@ -1,10 +1,12 @@
+#include "./../../include/infrastructure.h"
+#include "./../../include/hardwares/processor_6502.h"
+#include "./../../include/hardwares/memory_16.h"
+#include "./../../emulators/raw/raw.h"
+#include "./../../thirdparty/cJson/cJSON.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-#include "../../include/processor_6502.h"
-#include "../../include/memory_16.h"
-#include "../../thirdparty/cJson/cJSON.h"
 
 #define TRUE			1
 #define FALSE			0
@@ -22,6 +24,9 @@ typedef struct {
 	char * error;
 } feedback;
 
+extern uint16_t c_cycles[3 * 256];
+extern uint16_t c_cycles_i;
+
 // Others Function
 static char	* allocate_message_error(void);
 static void 	clean_memory(memory_16 * memory); // MUDAR DEPOIS
@@ -29,15 +34,16 @@ static char 	* get_json_content(const char * filename);
 static void 	set_reg_error(const char * reg_name, uint64_t got, uint64_t expected, char **error_message);
 
 // JSON ACCESS
-static uint8_t 	get_json_cycles(cJSON **test, uint64_t * cycles);
 static uint8_t 	get_json_test_name(cJSON **test, char ** test_name);
+static uint8_t 	store_json_cycles(cJSON **test, uint16_t **cycles_expected, uint16_t * cycles_size);
 static uint8_t 	store_json_processor_content(processor_6502 * processor, cJSON **test, const char * field);
 static uint8_t 	store_json_memory_content(memory_16 * memory, cJSON **test, const char * field);
 
 // Comparisons
 static uint8_t compare_processor(processor_6502 * p_cpu, processor_6502 * p_expected, char **error_message);
 static uint8_t compare_memory(memory_16 * m_mem, memory_16 * m_expected, char **error_message);
-static uint8_t compare_cycles(processor_6502 * processor, uint64_t cycles, char **error_message);
+static uint8_t compare_cycles(uint16_t *cycles, uint16_t size, uint16_t *cycles_expected, uint16_t size_expected, char **error_message);
+
 
 // Init process
 static void 	free_feedbacks(feedback *f, uint16_t size);
@@ -88,19 +94,6 @@ static char * get_json_content(const char * filename)
 	return buffer;
 }
 
-static uint8_t get_json_cycles(cJSON **test, uint64_t * cycles)
-{
-	cJSON * content = cJSON_GetObjectItemCaseSensitive(*test, "cycles");
-
-	if (content == NULL) {
-		printf("Error when tried to get json cycles");
-		return FALSE;
-	}
-	
-	*cycles = (uint64_t) cJSON_GetArraySize(content);
-	return TRUE;
-}
-
 static uint8_t get_json_test_name(cJSON **test, char ** test_name)
 {
 	cJSON *content = cJSON_GetObjectItemCaseSensitive(*test, "name");
@@ -111,6 +104,44 @@ static uint8_t get_json_test_name(cJSON **test, char ** test_name)
 	}
 
 	*test_name = content->valuestring;
+	return TRUE;
+}
+
+static uint8_t store_json_cycles(cJSON **test, uint16_t **cycles_expected, uint16_t * cycles_size)
+{
+	cJSON 	 *content = cJSON_GetObjectItemCaseSensitive(*test, "cycles");
+	cJSON 	 *entry;
+
+	uint16_t *c;
+	uint8_t  cycle_arr_size = 0;
+	uint16_t i = 0;
+
+	if (content == NULL) {
+		printf("Error when tried to get json cycles");
+		return FALSE;
+	}
+
+	cycle_arr_size = (uint8_t) cJSON_GetArraySize(content);
+	c = (uint16_t *) malloc(3 * cycle_arr_size * sizeof(uint16_t));
+		
+	cJSON_ArrayForEach(entry, content) {
+		cJSON * addr 		= cJSON_GetArrayItem(entry, 0);
+		cJSON * value		= cJSON_GetArrayItem(entry, 1);
+		cJSON * read_write	= cJSON_GetArrayItem(entry, 2);
+		
+		if (!cJSON_IsNumber(addr) || !cJSON_IsNumber(value) || !cJSON_IsString(read_write)) {
+			printf("Error: Invalid memory values");
+			free(c);
+			return FALSE;
+		}
+		
+		c[i++] = (uint16_t) addr->valueint;
+		c[i++] = (uint16_t) value->valueint;
+		c[i++] = (uint16_t) ((strcmp((char *)read_write->valuestring, "write") == 0) ? 1 : 0);	
+	}
+
+	*cycles_expected = c;
+	*cycles_size 	 = (uint16_t) cycle_arr_size * 3;
 	return TRUE;
 }
 
@@ -270,12 +301,21 @@ static uint8_t compare_memory(memory_16 * m_mem, memory_16 * m_expected, char **
 	return TRUE;
 }
 
-static uint8_t compare_cycles(processor_6502 * processor, uint64_t cycles, char **error_message)
+static uint8_t compare_cycles(uint16_t *cycles, uint16_t size, uint16_t *cycles_expected, uint16_t size_expected, char **error_message)
 {
-	if (processor->cycles != cycles) {
-		set_reg_error("CYCLES", processor->cycles, cycles, error_message);
+	if (size != size_expected) {
+		*error_message = allocate_message_error();
+		snprintf(*error_message, ERROR_MESSAGE_SIZE, "CYCLES COUNTER: got %d expected %d.\n", size/3, size_expected/3);
 		return FALSE;
 	}
+
+	for (uint8_t i = 0; i < (size_expected / 3); i++)
+		for (uint8_t j = 0; j < 3; j++)
+			if (cycles[j + (i * 3)] != cycles_expected[j + (i * 3)]) {
+				*error_message = allocate_message_error();
+				snprintf(*error_message, ERROR_MESSAGE_SIZE, "CYCLES: got [%d, %d, %d] expected [%d, %d, %d].\n", cycles[0 + (i * 3)], cycles[1 + (i * 3)], cycles[2 + (i * 3)], cycles_expected[0 + (i * 3)], cycles_expected[1 + (i * 3)], cycles_expected[2 + (i * 3)]);
+				return FALSE;
+		}
 	return TRUE;
 }
 
@@ -318,9 +358,11 @@ static uint8_t init_test(processor_6502 * p_cpu, processor_6502 * p_expected, me
 	passed_failed_counter counter;
 	feedback feedbacks[TOTAL_TESTS];
 
-	char * test_name = NULL;
-	char * error_message = NULL;
-	uint64_t cycles = 0;
+	char 	 *test_name 	= NULL;
+	char 	 *error_message = NULL;
+
+	uint16_t *cycles_expected 	= NULL;
+	uint16_t cycles_expected_size 	= 0;
 	
 	counter.passed = 0;
 	counter.failed = 0;
@@ -348,7 +390,7 @@ static uint8_t init_test(processor_6502 * p_cpu, processor_6502 * p_expected, me
 			return FALSE;
 		}
 
-		if (! get_json_cycles(&test, &cycles) ) {
+		if (! store_json_cycles(&test, &cycles_expected, &cycles_expected_size) ) {
 			free_feedbacks(feedbacks, counter.failed);
 			return FALSE;
 		}
@@ -373,19 +415,22 @@ static uint8_t init_test(processor_6502 * p_cpu, processor_6502 * p_expected, me
 			counter.failed++;
 			goto goto_end;
 		}
-
-		if (! compare_cycles(p_cpu, cycles, &error_message) ) {
+		
+		if (! compare_cycles(c_cycles, c_cycles_i, cycles_expected, cycles_expected_size, &error_message)
+ ) {
 			feedbacks[counter.failed].test_name = test_name;
 			feedbacks[counter.failed].error = error_message;
 			counter.failed++;
 			goto goto_end;
 		}
-
+		
 		counter.passed++;
 
 goto_end:
-		// Preparing for next process
-		cycles = 0;
+		//Preparing cycles for next process
+		free(cycles_expected);
+		cycles_expected_size = 0;
+		c_cycles_i = 0;
 	}
 	
 	print_results(counter, feedbacks);
@@ -402,6 +447,19 @@ int main (int argc, char *argv[])
 
 	processor_6502 p_cpu, p_expected;
 	memory_16 m_mem, m_expected;
+	
+	infra_raw emu = {
+		.cpu	= p_cpu,
+		.memory	= m_mem,
+	};
+
+	infra_raw emu_expected = {
+		.cpu	= p_expected,
+		.memory	= m_expected,
+	};
+
+	emu.cpu.bus		= (buses) { bus_raw_read, bus_raw_write, &emu };
+	emu_expected.cpu.bus	= (buses) { bus_raw_read, bus_raw_write, &emu_expected };
 
 	char * filename = allocate_message_error(); // Preguiça de mudar o nome da função...
 	snprintf(filename, ERROR_MESSAGE_SIZE, "./v1/%s.json", argv[1]);
@@ -422,9 +480,9 @@ int main (int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	if (! init_test(&p_cpu, &p_expected, &m_mem, &m_expected, &root) )
+	if (! init_test(&(emu.cpu), &(emu_expected.cpu), &(emu.memory), &(emu_expected.memory), &root) )
 		printf("Error: Stoping test...\n");
-	
+
 	cJSON_Delete(root);
 	free(content);
 	free(filename);
