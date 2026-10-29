@@ -14,15 +14,12 @@
 #define FLAG_ZER	0x02
 #define FLAG_CAR	0x01
 
-/*
- * Description: Function Pointers to handle Addressing Modes and Opcodes.
- */
+
+// Function Pointers to handle Addressing Modes and Opcodes.
 typedef bits_16	(*addr_fn) (processor_6502 * processor, bits_8 force_oops);
 typedef void	(*op_fn) (processor_6502 * processor, bits_16 addr);
 
-/*
- * Description: Opcode Structure.
- */
+// Description: Opcode Structure.
 typedef struct {
 	const char	*op_name;
 	op_fn		op;
@@ -66,8 +63,32 @@ static void op_adc(processor_6502 * processor, bits_16 addr);
 static void op_sbc(processor_6502 * processor, bits_16 addr);
 static void op_inc(processor_6502 * processor, bits_16 addr);
 static void op_dec(processor_6502 * processor, bits_16 addr);
+static void op_inx(processor_6502 * processor, bits_16 addr);
+static void op_dex(processor_6502 * processor, bits_16 addr);
+static void op_iny(processor_6502 * processor, bits_16 addr);
+static void op_dey(processor_6502 * processor, bits_16 addr);
+// Shift:
+static void op_asl(processor_6502 * processor, bits_16 addr);
+static void op_lsr(processor_6502 * processor, bits_16 addr);
+static void op_rol(processor_6502 * processor, bits_16 addr);
+static void op_ror(processor_6502 * processor, bits_16 addr);
+static void op_asl_accum(processor_6502 * processor, bits_16 addr);
+static void op_lsr_accum(processor_6502 * processor, bits_16 addr);
+static void op_rol_accum(processor_6502 * processor, bits_16 addr);
+static void op_ror_accum(processor_6502 * processor, bits_16 addr);
+// Bitwise:
+static void op_and(processor_6502 * processor, bits_16 addr);
+static void op_ora(processor_6502 * processor, bits_16 addr);
+static void op_eor(processor_6502 * processor, bits_16 addr);
+static void op_bit(processor_6502 * processor, bits_16 addr);
+// Compare:
+static void op_cmp(processor_6502 * processor, bits_16 addr);
+static void op_cpx(processor_6502 * processor, bits_16 addr);
+static void op_cpy(processor_6502 * processor, bits_16 addr);
+// Branch:
 
-// Flag
+
+// Flags Management
 static void set_flag(processor_6502 * processor, bits_8 flag_mask, int condition);
 static void set_nz(processor_6502 * processor, bits_8 data);
 
@@ -75,79 +96,143 @@ static void set_nz(processor_6502 * processor, bits_8 data);
 static uint16_t little_endian_solver(uint16_t low, uint16_t high, uint8_t add, uint16_t *carry);
 static uint8_t oops(uint8_t force_oops, uint8_t condition);
 
-
-// Handle (Helpers)
+// Handles (Helpers)
 static void handle_op_adc_decimal_mode(processor_6502 * p, uint8_t data);
 static void handle_op_adc_binary_mode(processor_6502 * p, uint8_t data);
 static void handle_op_sbc_decimal_mode(processor_6502 * p, uint8_t data);
 static void handle_op_sbc_binary_mode(processor_6502 * p, uint8_t data);
 
 
+
 /*
  * Description: A table containing all OPCODES
  */
 static const opcode_entry op_table[NUM_OPCODES] = {
-	[0xA9]	=	{ "LDA", op_lda, mode_immediate, 	0 }, // PASSED
-	[0xA5]	=	{ "LDA", op_lda, mode_zero_page, 	0 }, // PASSED
-	[0xB5]	=	{ "LDA", op_lda, mode_zero_page_x, 	0 }, //	PASSED
-	[0xAD]	=	{ "LDA", op_lda, mode_absolute,		0 }, // PASSED
-	[0xBD]	=	{ "LDA", op_lda, mode_absolute_x,	0 }, // PASSED
-	[0xB9]	=	{ "LDA", op_lda, mode_absolute_y,	0 }, // PASSED
-	[0xA1]	=	{ "LDA", op_lda, mode_indirect_x,	0 }, // PASSED
-	[0xB1]	=	{ "LDA", op_lda, mode_indirect_y, 	0 }, // PASSED
-	[0xA2]	=	{ "LDX", op_ldx, mode_immediate, 	0 }, // PASSED
-	[0xA6]	=	{ "LDX", op_ldx, mode_zero_page, 	0 }, // PASSED
-	[0xB6]	=	{ "LDX", op_ldx, mode_zero_page_y,	0 }, // PASSED
-	[0xAE]	=	{ "LDX", op_ldx, mode_absolute,		0 }, // PASSED
-	[0xBE]	=	{ "LDX", op_ldx, mode_absolute_y,	0 }, // PASSED
-	[0xA0]	=	{ "LDY", op_ldy, mode_immediate,	0 }, // PASSED
-	[0xA4]	=	{ "LDY", op_ldy, mode_zero_page,	0 }, // PASSED
-	[0xB4]	=	{ "LDY", op_ldy, mode_zero_page_x, 	0 }, // PASSED
-	[0xAC]	=	{ "LDY", op_ldy, mode_absolute,		0 }, // PASSED
-	[0xBC]	=	{ "LDY", op_ldy, mode_absolute_x,	0 }, // PASSED
-	[0x85]	=	{ "STA", op_sta, mode_zero_page,	1 }, // PASSED
-	[0x95]	=	{ "STA", op_sta, mode_zero_page_x,	1 }, // PASSED
-	[0x8D]	=	{ "STA", op_sta, mode_absolute,		1 }, // PASSED
-	[0x9D]	=	{ "STA", op_sta, mode_absolute_x,	1 }, // PASSED
-	[0x99]	=	{ "STA", op_sta, mode_absolute_y,	1 }, // PASSED
-	[0x81]	=	{ "STA", op_sta, mode_indirect_x,	1 }, // PASSED
-	[0x91]	=	{ "STA", op_sta, mode_indirect_y,	1 }, // PASSED
-	[0x86]	=	{ "STX", op_stx, mode_zero_page,	1 }, // PASSED
-	[0x96]	=	{ "STX", op_stx, mode_zero_page_y,	1 }, // PASSED
-	[0x8E]	=	{ "STX", op_stx, mode_absolute,		1 }, // PASSED
-	[0x84]	=	{ "STY", op_sty, mode_zero_page,	1 }, // PASSED
-	[0x94]	=	{ "STY", op_sty, mode_zero_page_x,	1 }, // PASSED
-	[0x8C]	=	{ "STY", op_sty, mode_absolute,		1 }, // PASSED
-	[0xAA]	=	{ "TAX", op_tax, mode_implied,		0 }, // PASSED
-	[0xA8]	=	{ "TAY", op_tay, mode_implied,		0 }, // PASSED
-	[0xBA]	=	{ "TSX", op_tsx, mode_implied, 		0 }, // PASSED
-	[0x8A]	=	{ "TXA", op_txa, mode_implied, 		0 }, // PASSED
-	[0x9A]	=	{ "TXS", op_txs, mode_implied,		0 }, // PASSED
-	[0x98]	=	{ "TYA", op_tya, mode_implied,		0 }, // PASSED
-	[0x69]	=	{ "ADC", op_adc, mode_immediate,	0 }, // PASSED
-	[0x65]	=	{ "ADC", op_adc, mode_zero_page,	0 }, // PASSED
-	[0x75]	=	{ "ADC", op_adc, mode_zero_page_x,	0 }, // PASSED
-	[0x6D]	=	{ "ADC", op_adc, mode_absolute,		0 }, // PASSED
-	[0x7D]	=	{ "ADC", op_adc, mode_absolute_x,	0 }, // PASSED
-	[0x79]	=	{ "ADC", op_adc, mode_absolute_y,	0 }, // PASSED
-	[0x61]	=	{ "ADC", op_adc, mode_indirect_x,	0 }, // PASSED 
-	[0x71]	=	{ "ADC", op_adc, mode_indirect_y,	0 }, // PASSED 
-	[0xE9]	=	{ "SBC", op_sbc, mode_immediate,	0 }, // PASSED
-	[0xE5]	=	{ "SBC", op_sbc, mode_zero_page,	0 }, // PASSED
-	[0xF5]	=	{ "SBC", op_sbc, mode_zero_page_x,	0 }, // PASSED
-	[0xED]	=	{ "SBC", op_sbc, mode_absolute,		0 }, // PASSED
-	[0xFD]	=	{ "SBC", op_sbc, mode_absolute_x,	0 }, // PASSED
-	[0xF9]	=	{ "SBC", op_sbc, mode_absolute_y, 	0 }, // PASSED
-	[0xE1]	=	{ "SBC", op_sbc, mode_indirect_x,	0 }, // PASSED
-	[0xF1]	=	{ "SBC", op_sbc, mode_indirect_y,	0 }, // PASSED
-	[0xE6]	=	{ "INC", op_inc, mode_zero_page,	1 }, // PASSED
-	[0xF6]	=	{ "INC", op_inc, mode_zero_page_x,	1 }, // PASSED
-	[0xEE]	=	{ "INC", op_inc, mode_absolute,		1 }, // PASSED
-	[0xFE]	=	{ "INC", op_inc, mode_absolute_x,	1 }, // PASSED
-	[0xC6]	=	{ "DEC", op_dec, mode_zero_page, 	1 }, // PASSED
-	[0xD6]	=	{ "DEC", op_dec, mode_zero_page_x,	1 }, // PASSED
-	[0xCE]	=	{ "DEC", op_dec, mode_absolute,		1 }, // PASSED
-	[0xDE]	=	{ "DEC", op_dec, mode_absolute_x,	1 }, // PASSED
+	[0xA9]	=	{ "LDA", op_lda, 	mode_immediate, 	0 }, // PASSED
+	[0xA5]	=	{ "LDA", op_lda, 	mode_zero_page, 	0 }, // PASSED
+	[0xB5]	=	{ "LDA", op_lda, 	mode_zero_page_x, 	0 }, //	PASSED
+	[0xAD]	=	{ "LDA", op_lda, 	mode_absolute,		0 }, // PASSED
+	[0xBD]	=	{ "LDA", op_lda, 	mode_absolute_x,	0 }, // PASSED
+	[0xB9]	=	{ "LDA", op_lda, 	mode_absolute_y,	0 }, // PASSED
+	[0xA1]	=	{ "LDA", op_lda, 	mode_indirect_x,	0 }, // PASSED
+	[0xB1]	=	{ "LDA", op_lda, 	mode_indirect_y, 	0 }, // PASSED
+	[0xA2]	=	{ "LDX", op_ldx, 	mode_immediate, 	0 }, // PASSED
+	[0xA6]	=	{ "LDX", op_ldx, 	mode_zero_page, 	0 }, // PASSED
+	[0xB6]	=	{ "LDX", op_ldx, 	mode_zero_page_y,	0 }, // PASSED
+	[0xAE]	=	{ "LDX", op_ldx, 	mode_absolute,		0 }, // PASSED
+	[0xBE]	=	{ "LDX", op_ldx, 	mode_absolute_y,	0 }, // PASSED
+	[0xA0]	=	{ "LDY", op_ldy, 	mode_immediate,		0 }, // PASSED
+	[0xA4]	=	{ "LDY", op_ldy, 	mode_zero_page,		0 }, // PASSED
+	[0xB4]	=	{ "LDY", op_ldy, 	mode_zero_page_x, 	0 }, // PASSED
+	[0xAC]	=	{ "LDY", op_ldy, 	mode_absolute,		0 }, // PASSED
+	[0xBC]	=	{ "LDY", op_ldy, 	mode_absolute_x,	0 }, // PASSED
+	[0x85]	=	{ "STA", op_sta, 	mode_zero_page,		1 }, // PASSED
+	[0x95]	=	{ "STA", op_sta, 	mode_zero_page_x,	1 }, // PASSED
+	[0x8D]	=	{ "STA", op_sta, 	mode_absolute,		1 }, // PASSED
+	[0x9D]	=	{ "STA", op_sta, 	mode_absolute_x,	1 }, // PASSED
+	[0x99]	=	{ "STA", op_sta, 	mode_absolute_y,	1 }, // PASSED
+	[0x81]	=	{ "STA", op_sta, 	mode_indirect_x,	1 }, // PASSED
+	[0x91]	=	{ "STA", op_sta, 	mode_indirect_y,	1 }, // PASSED
+	[0x86]	=	{ "STX", op_stx, 	mode_zero_page,		1 }, // PASSED
+	[0x96]	=	{ "STX", op_stx, 	mode_zero_page_y,	1 }, // PASSED
+	[0x8E]	=	{ "STX", op_stx, 	mode_absolute,		1 }, // PASSED
+	[0x84]	=	{ "STY", op_sty, 	mode_zero_page,		1 }, // PASSED
+	[0x94]	=	{ "STY", op_sty, 	mode_zero_page_x,	1 }, // PASSED
+	[0x8C]	=	{ "STY", op_sty, 	mode_absolute,		1 }, // PASSED
+	[0xAA]	=	{ "TAX", op_tax, 	mode_implied,		0 }, // PASSED
+	[0xA8]	=	{ "TAY", op_tay, 	mode_implied,		0 }, // PASSED
+	[0xBA]	=	{ "TSX", op_tsx, 	mode_implied, 		0 }, // PASSED
+	[0x8A]	=	{ "TXA", op_txa, 	mode_implied, 		0 }, // PASSED
+	[0x9A]	=	{ "TXS", op_txs, 	mode_implied,		0 }, // PASSED
+	[0x98]	=	{ "TYA", op_tya, 	mode_implied,		0 }, // PASSED
+	[0x69]	=	{ "ADC", op_adc, 	mode_immediate,		0 }, // PASSED
+	[0x65]	=	{ "ADC", op_adc, 	mode_zero_page,		0 }, // PASSED
+	[0x75]	=	{ "ADC", op_adc, 	mode_zero_page_x,	0 }, // PASSED
+	[0x6D]	=	{ "ADC", op_adc, 	mode_absolute,		0 }, // PASSED
+	[0x7D]	=	{ "ADC", op_adc, 	mode_absolute_x,	0 }, // PASSED
+	[0x79]	=	{ "ADC", op_adc, 	mode_absolute_y,	0 }, // PASSED
+	[0x61]	=	{ "ADC", op_adc, 	mode_indirect_x,	0 }, // PASSED 
+	[0x71]	=	{ "ADC", op_adc, 	mode_indirect_y,	0 }, // PASSED 
+	[0xE9]	=	{ "SBC", op_sbc, 	mode_immediate,		0 }, // PASSED
+	[0xE5]	=	{ "SBC", op_sbc, 	mode_zero_page,		0 }, // PASSED
+	[0xF5]	=	{ "SBC", op_sbc, 	mode_zero_page_x,	0 }, // PASSED
+	[0xED]	=	{ "SBC", op_sbc, 	mode_absolute,		0 }, // PASSED
+	[0xFD]	=	{ "SBC", op_sbc, 	mode_absolute_x,	0 }, // PASSED
+	[0xF9]	=	{ "SBC", op_sbc, 	mode_absolute_y, 	0 }, // PASSED
+	[0xE1]	=	{ "SBC", op_sbc, 	mode_indirect_x,	0 }, // PASSED
+	[0xF1]	=	{ "SBC", op_sbc, 	mode_indirect_y,	0 }, // PASSED
+	[0xE6]	=	{ "INC", op_inc, 	mode_zero_page,		1 }, // PASSED
+	[0xF6]	=	{ "INC", op_inc, 	mode_zero_page_x,	1 }, // PASSED
+	[0xEE]	=	{ "INC", op_inc, 	mode_absolute,		1 }, // PASSED
+	[0xFE]	=	{ "INC", op_inc, 	mode_absolute_x,	1 }, // PASSED
+	[0xC6]	=	{ "DEC", op_dec, 	mode_zero_page, 	1 }, // PASSED
+	[0xD6]	=	{ "DEC", op_dec, 	mode_zero_page_x,	1 }, // PASSED
+	[0xCE]	=	{ "DEC", op_dec, 	mode_absolute,		1 }, // PASSED
+	[0xDE]	=	{ "DEC", op_dec, 	mode_absolute_x,	1 }, // PASSED
+	[0xE8]	=	{ "INX", op_inx, 	mode_implied,		0 }, // PASSED
+	[0xCA]	=	{ "DEX", op_dex, 	mode_implied,		0 }, // PASSED
+	[0xC8]	=	{ "INY", op_iny, 	mode_implied,		0 }, // PASSED
+	[0x88]	=	{ "DEY", op_dey, 	mode_implied,		0 }, // PASSED
+	[0x0A]	=	{ "ASL", op_asl_accum,	mode_implied,		1 }, // PASSED
+	[0x06]	=	{ "ASL", op_asl,	mode_zero_page,		1 }, // PASSED
+	[0x16]	=	{ "ASL", op_asl,	mode_zero_page_x,	1 }, // PASSED
+	[0x0E]	=	{ "ASL", op_asl, 	mode_absolute,		1 }, // PASSED
+	[0x1E]	=	{ "ASL", op_asl,	mode_absolute_x,	1 }, // PASSED
+	[0x4A]	=	{ "LSR", op_lsr_accum,	mode_implied,		1 }, // PASSED
+	[0x46]	=	{ "LSR", op_lsr,	mode_zero_page,		1 }, // PASSED
+	[0x56]	=	{ "LSR", op_lsr,	mode_zero_page_x,	1 }, // PASSED
+	[0x4E]	=	{ "LSR", op_lsr,	mode_absolute,		1 }, // PASSED
+	[0x5E]	=	{ "LSR", op_lsr,	mode_absolute_x,	1 }, // PASSED
+	[0x2A]	=	{ "ROL", op_rol_accum,	mode_implied,		1 }, // PASSED
+	[0x26]	=	{ "ROL", op_rol,	mode_zero_page,		1 }, // PASSED
+	[0x36]	=	{ "ROL", op_rol,	mode_zero_page_x,	1 }, // PASSED
+	[0x2E]	=	{ "ROL", op_rol,	mode_absolute,		1 }, // PASSED
+	[0x3E]	=	{ "ROL", op_rol,	mode_absolute_x,	1 }, // PASSED
+	[0x6A]	=	{ "ROR", op_ror_accum,	mode_implied,		1 }, // PASSED
+	[0x66]	=	{ "ROR", op_ror,	mode_zero_page,		1 }, // PASSED
+	[0x76]	=	{ "ROR", op_ror,	mode_zero_page_x,	1 }, // PASSED
+	[0x6E]	=	{ "ROR", op_ror,	mode_absolute,		1 }, // PASSED
+	[0x7E]	=	{ "ROR", op_ror,	mode_absolute_x,	1 }, // PASSED
+	[0x29]	=	{ "AND", op_and,	mode_immediate,		0 }, // PASSED
+	[0x25]	=	{ "AND", op_and,	mode_zero_page,		0 }, // PASSED
+	[0x35]	=	{ "AND", op_and,	mode_zero_page_x,	0 }, // PASSED
+	[0x2D]	=	{ "AND", op_and,	mode_absolute,		0 }, // PASSED
+	[0x3D]	=	{ "AND", op_and,	mode_absolute_x,	0 }, // PASSED
+	[0x39]	=	{ "AND", op_and,	mode_absolute_y,	0 }, // PASSED
+	[0x21]	=	{ "AND", op_and,	mode_indirect_x,	0 }, // PASSED
+	[0x31]	=	{ "AND", op_and,	mode_indirect_y,	0 }, // PASSED
+	[0x09]	=	{ "ORA", op_ora,	mode_immediate,		0 }, // PASSED
+	[0x05]	=	{ "ORA", op_ora,	mode_zero_page,		0 }, // PASSED
+	[0x15]	=	{ "ORA", op_ora,	mode_zero_page_x,	0 }, // PASSED
+	[0x0D]	=	{ "ORA", op_ora,	mode_absolute,		0 }, // PASSED
+	[0x1D]	=	{ "ORA", op_ora,	mode_absolute_x,	0 }, // PASSED
+	[0x19]	=	{ "ORA", op_ora,	mode_absolute_y,	0 }, // PASSED
+	[0x01]	=	{ "ORA", op_ora,	mode_indirect_x,	0 }, // PASSED
+	[0x11]	=	{ "ORA", op_ora,	mode_indirect_y,	0 }, // PASSED
+	[0x49]	=	{ "EOR", op_eor,	mode_immediate,		0 }, // PASSED
+	[0x45]	=	{ "EOR", op_eor,	mode_zero_page,		0 }, // PASSED
+	[0x55]	=	{ "EOR", op_eor,	mode_zero_page_x,	0 }, // PASSED
+	[0x4D]	=	{ "EOR", op_eor,	mode_absolute,		0 }, // PASSED
+	[0x5D]	=	{ "EOR", op_eor,	mode_absolute_x,	0 }, // PASSED
+	[0x59]	=	{ "EOR", op_eor,	mode_absolute_y,	0 }, // PASSED
+	[0x41]	=	{ "EOR", op_eor,	mode_indirect_x,	0 }, // PASSED
+	[0x51]	=	{ "EOR", op_eor,	mode_indirect_y,	0 }, // PASSED
+	[0x24]	=	{ "BIT", op_bit,	mode_zero_page,		0 }, // PASSED
+	[0x2C]	=	{ "BIT", op_bit,	mode_absolute,		0 }, // PASSED
+	[0xC9]	=	{ "CMP", op_cmp,	mode_immediate,		0 }, // PASSED
+	[0xC5]	=	{ "CMP", op_cmp,	mode_zero_page,		0 }, // PASSED
+	[0xD5]	=	{ "CMP", op_cmp,	mode_zero_page_x,	0 }, // PASSED
+	[0xCD]	=	{ "CMP", op_cmp,	mode_absolute,		0 }, // PASSED
+	[0xDD]	=	{ "CMP", op_cmp,	mode_absolute_x,	0 }, // PASSED
+	[0xD9]	=	{ "CMP", op_cmp,	mode_absolute_y,	0 }, // PASSED
+	[0xC1]	=	{ "CMP", op_cmp,	mode_indirect_x,	0 }, // PASSED
+	[0xD1]	=	{ "CMP", op_cmp,	mode_indirect_y,	0 }, // PASSED
+	[0xE0]	=	{ "CMX", op_cpx,	mode_immediate,		0 }, // PASSED
+	[0xE4]	=	{ "CPX", op_cpx,	mode_zero_page,		0 }, // PASSED
+	[0xEC]	=	{ "CPX", op_cpx,	mode_absolute,		0 }, // PASSED
+	[0xC0]	=	{ "CPY", op_cpy,	mode_immediate,		0 }, // PASSED
+	[0xC4]	=	{ "CPY", op_cpy,	mode_zero_page,		0 }, // PASSED
+	[0xCC]	=	{ "CPY", op_cpy,	mode_absolute,		0 }, // PASSED
 };
 
 
@@ -488,7 +573,166 @@ static void op_dec(processor_6502 * processor, bits_16 addr)
 	set_nz(processor, data);
 }
 
+static void op_inx(processor_6502 * processor, bits_16 addr)
+{
+	processor->reg_x++;
+	set_nz(processor, processor->reg_x);
+	UNUSED(addr);
+}
 
+static void op_dex(processor_6502 * processor, bits_16 addr)
+{
+	processor->reg_x--;
+	set_nz(processor, processor->reg_x);
+	UNUSED(addr);
+}
+
+static void op_iny(processor_6502 * processor, bits_16 addr)
+{
+	processor->reg_y++;
+	set_nz(processor, processor->reg_y);
+	UNUSED(addr);
+}
+
+static void op_dey(processor_6502 * processor, bits_16 addr)
+{
+	processor->reg_y--;
+	set_nz(processor, processor->reg_y);
+	UNUSED(addr);
+}
+
+static void op_asl_accum(processor_6502 * processor, bits_16 addr)
+{
+	uint8_t carry = ((processor->reg_a & 0b10000000) >> 7); // Get the last bit
+	processor->reg_a = processor->reg_a << 1;
+	set_nz(processor, processor->reg_a);
+	set_flag(processor, FLAG_CAR, carry);
+	UNUSED(addr);
+}
+
+static void op_asl(processor_6502 * processor, bits_16 addr)
+{
+	uint8_t data = processor_read(processor, addr);
+	uint8_t carry = ((data & 0b10000000) >> 7); // Get the last bit
+	processor_write(processor, addr, data);
+	data = data << 1;
+	processor_write(processor, addr, data);
+	set_nz(processor, data);
+	set_flag(processor, FLAG_CAR, carry);
+}
+
+static void op_lsr_accum(processor_6502 * processor, bits_16 addr)
+{
+	set_flag(processor, FLAG_CAR, processor->reg_a & FLAG_CAR);
+	processor->reg_a = processor->reg_a >> 1;
+	set_nz(processor, processor->reg_a);
+	UNUSED(addr);
+}
+
+static void op_lsr(processor_6502 * processor, bits_16 addr)
+{
+	uint8_t data = processor_read(processor, addr);
+	processor_write(processor, addr, data);
+	set_flag(processor, FLAG_CAR, data & FLAG_CAR);
+	data = data >> 1;
+	processor_write(processor, addr, data);
+	set_nz(processor, data);
+}
+
+static void op_rol_accum(processor_6502 * processor, bits_16 addr)
+{
+	uint8_t carry = ((processor->reg_a & 0b10000000) >> 7); // Get the last bit
+	processor->reg_a = ((processor->reg_a << 1) | (processor->reg_p & FLAG_CAR));
+	set_nz(processor, processor->reg_a);
+	set_flag(processor, FLAG_CAR, carry);
+	UNUSED(addr);
+}
+
+static void op_rol(processor_6502 * processor, bits_16 addr)
+{
+	uint8_t data = processor_read(processor, addr);
+ 	uint8_t carry = ((data & 0b10000000) >> 7); // Get the last bit
+	processor_write(processor, addr, data);
+	data = ((data << 1) | (processor->reg_p & FLAG_CAR));
+	processor_write(processor, addr, data);
+	set_nz(processor, data);
+	set_flag(processor, FLAG_CAR, carry);
+}
+
+static void op_ror_accum(processor_6502 * processor, bits_16 addr)
+{
+	uint8_t carry = ((processor->reg_a & FLAG_CAR));
+	processor->reg_a = ((processor->reg_a >> 1) | ((processor->reg_p & FLAG_CAR) << 7));
+	set_nz(processor, processor->reg_a);
+	set_flag(processor, FLAG_CAR, carry);
+	UNUSED(addr);
+}
+
+static void op_ror(processor_6502 * processor, bits_16 addr)
+{
+	uint8_t data = processor_read(processor, addr);
+	uint8_t carry = (data & FLAG_CAR);
+	processor_write(processor, addr, data);
+	data = ((data >> 1) | ((processor->reg_p & FLAG_CAR) << 7));
+	processor_write(processor, addr, data);
+	set_nz(processor, data);
+	set_flag(processor, FLAG_CAR, carry);
+}
+
+static void op_and(processor_6502 * processor, bits_16 addr)
+{
+	uint8_t data = processor_read(processor, addr);
+	processor->reg_a = processor->reg_a & data;
+	set_nz(processor, processor->reg_a);
+}
+
+static void op_ora(processor_6502 * processor, bits_16 addr)
+{
+	uint8_t data = processor_read(processor, addr);
+	processor->reg_a = processor->reg_a | data;
+	set_nz(processor, processor->reg_a);
+}
+
+static void op_eor(processor_6502 * processor, bits_16 addr)
+{
+	uint8_t data = processor_read(processor, addr);
+	processor->reg_a = processor->reg_a ^ data;
+	set_nz(processor, processor->reg_a);
+}
+
+static void op_bit(processor_6502 * processor, bits_16 addr)
+{
+	uint8_t data = processor_read(processor, addr);
+	set_flag(processor, FLAG_ZER, (processor->reg_a & data) == 0);
+	set_flag(processor, FLAG_NEG, data & FLAG_NEG);
+	set_flag(processor, FLAG_OVF, data & FLAG_OVF);
+}
+
+static void op_cmp(processor_6502 * processor, bits_16 addr)
+{
+	uint8_t data = processor_read(processor, addr);
+	set_flag(processor, FLAG_CAR, processor->reg_a >= data);
+	set_flag(processor, FLAG_ZER, processor->reg_a == data);
+	set_flag(processor, FLAG_NEG, (processor->reg_a - data) & FLAG_NEG);
+}
+
+static void op_cpx(processor_6502 * processor, bits_16 addr)
+{
+	uint8_t data = processor_read(processor, addr);
+	set_flag(processor, FLAG_CAR, processor->reg_x >= data);
+	set_flag(processor, FLAG_ZER, processor->reg_x == data);
+	set_flag(processor, FLAG_NEG, (processor->reg_x - data) & FLAG_NEG);
+
+}
+
+static void op_cpy(processor_6502 * processor, bits_16 addr)
+{
+	uint8_t data = processor_read(processor, addr);
+	set_flag(processor, FLAG_CAR, processor->reg_y >= data);
+	set_flag(processor, FLAG_ZER, processor->reg_y == data);
+	set_flag(processor, FLAG_NEG, (processor->reg_y - data) & FLAG_NEG);
+
+}
 
 // >> PUBLIC FUNCTIONS <<
 
