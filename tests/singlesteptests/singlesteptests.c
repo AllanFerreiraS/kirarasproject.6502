@@ -50,6 +50,11 @@ static void 	free_feedbacks(feedback *f, uint16_t size);
 static void 	print_results(passed_failed_counter counter, feedback *feedbacks);
 static uint8_t 	init_test(processor_6502 * p_cpu, processor_6502 * p_expected, memory_16 * m_mem, memory_16 * m_expected, cJSON **root);
 
+// Main
+uint8_t get_json_legal_opcodes(uint8_t *arr, uint16_t *size);
+uint8_t all_files_test(infra_raw * emulator, infra_raw * emulator_expected);
+uint8_t single_file_test(const char * file, infra_raw * emulator, infra_raw * emulator_expected);
+
 
 void u8_decimal_to_binary_string(uint8_t v, char * b)
 {
@@ -438,6 +443,156 @@ goto_end:
 	return TRUE;
 }
 
+
+uint8_t get_json_legal_opcodes(uint8_t *arr, uint16_t *size)
+{
+
+	uint8_t return_status	= TRUE;
+
+	for (uint16_t i = 0; i < 0x100; i++)
+		arr[i] = 0;
+	*size = 0;
+	
+	char * content = get_json_content("./list_6502_opcodes/opcodes.json");
+	if (content == NULL) {
+		printf("Fatal Error: File \'./list_6502_opcodes/opcodes.json\' not found.\n");
+		return FALSE;
+	}
+	
+	cJSON *root = cJSON_Parse(content);
+	if (root == NULL) {
+		printf(">> Fatal Error: JSON_ROOT is NULL.\n");
+		return_status = FALSE;
+		goto goto_cleanup;
+	}
+
+	cJSON *opcodes = cJSON_GetObjectItemCaseSensitive(root, "OPCODES");
+	if (! cJSON_IsArray(opcodes)) {
+		printf(">> Fatal Error: JSON_OPCODES is not an array\n");
+		return_status = FALSE;
+		goto goto_cleanup;
+	}
+
+	cJSON *entry;
+	cJSON_ArrayForEach(entry, opcodes) {
+		
+		cJSON *value = cJSON_GetObjectItemCaseSensitive(entry, "opcode");
+		if (!cJSON_IsString(value)) {
+			printf("Error: Invalid OPCODE field value.\n");
+			return_status = FALSE;
+			goto goto_cleanup;
+		}
+			
+		cJSON *illegal = cJSON_GetObjectItemCaseSensitive(entry, "illegal");
+		if (!cJSON_IsBool(illegal)) {
+			printf("Error: Invalid Illegal field value.\n");
+			return_status = FALSE;
+			goto goto_cleanup;
+		}
+	
+		if (! cJSON_IsTrue(illegal) ) {
+			arr[(*size)++] = (uint8_t) strtol(value->valuestring, NULL, 0);
+		}
+	}
+
+goto_cleanup:
+	cJSON_Delete(root);
+	free(content);
+	return return_status;
+}
+
+uint8_t all_files_test(infra_raw * emulator, infra_raw * emulator_expected)
+{
+	
+	uint8_t arr[0x100] = {0};
+	uint16_t arr_size = 0;
+	if (! get_json_legal_opcodes(arr, &arr_size) )
+		return FALSE;
+
+	uint16_t file_counter = 0;
+
+	for (uint16_t i = 0; i < arr_size; i++) {
+		
+		char * filename = allocate_message_error(); // Preguiça de mudar o nome da função...
+		snprintf(filename, ERROR_MESSAGE_SIZE, "./v1/%02x.json", arr[i]);
+
+		printf(">> OPCODE %02x: ", arr[i]);
+
+		char * content = get_json_content(filename);
+		if (content == NULL) {
+			printf("Error opening file.\n");
+			free(filename);
+			break;
+		}
+
+		printf("Selected.\n");
+
+		cJSON *root = cJSON_Parse(content);
+		if (root == NULL) {
+			printf(">> Fatal Error: JSON_ROOT is NULL.\n");
+			cJSON_Delete(root);
+			free(content);
+			free(filename);
+			return FALSE;
+			//exit(EXIT_FAILURE);
+		}
+
+		if (! init_test(&(emulator->cpu), &(emulator_expected->cpu), &(emulator->memory), &(emulator_expected->memory), &root) ) {
+			cJSON_Delete(root);
+			free(content);
+			free(filename);
+			return FALSE;
+		}
+
+		cJSON_Delete(root);
+		free(content);
+		free(filename);
+
+		file_counter++;
+		printf(">> [%d, %d]\n", file_counter, arr_size);
+		printf("=-=-=-=-=-=-=-=-=-=-=-=\n");
+	}
+
+	return TRUE;
+}
+
+uint8_t single_file_test(const char * file, infra_raw * emulator, infra_raw * emulator_expected)
+{
+	char * filename = allocate_message_error(); // Preguiça de mudar o nome da função...
+	snprintf(filename, ERROR_MESSAGE_SIZE, "./v1/%s.json", file);
+
+	char * content = get_json_content(filename);
+	if (content == NULL) {
+		printf("Error opening file: %s\n", filename);
+		free(filename);
+		return FALSE;
+	}
+
+	cJSON *root = cJSON_Parse(content);
+	if (root == NULL) {
+		printf("Fatal Error: JSON_ROOT is NULL\n");
+		cJSON_Delete(root);
+		free(content);
+		free(filename);
+		return FALSE;
+	}
+
+	if (! init_test(&(emulator->cpu), &(emulator_expected->cpu), &(emulator->memory), &(emulator_expected->memory), &root) ) {
+		cJSON_Delete(root);
+		free(content);
+		free(filename);
+		return FALSE;
+	}
+
+	cJSON_Delete(root);
+	free(content);
+	free(filename);
+	return TRUE;
+}
+
+
+
+
 int main (int argc, char *argv[])
 {
 	if (argc <= 1) {
@@ -461,30 +616,16 @@ int main (int argc, char *argv[])
 	emu.cpu.bus		= (buses) { bus_raw_read, bus_raw_write, &emu };
 	emu_expected.cpu.bus	= (buses) { bus_raw_read, bus_raw_write, &emu_expected };
 
-	char * filename = allocate_message_error(); // Preguiça de mudar o nome da função...
-	snprintf(filename, ERROR_MESSAGE_SIZE, "./v1/%s.json", argv[1]);
-
-	char * content = get_json_content(filename);
-	if (content == NULL) {
-		printf("Error opening file: %s\n", filename);
-		free(filename);
-		exit(EXIT_FAILURE);
+	if ( strcmp(argv[1], "all") == 0 ) {
+		if (! all_files_test(&emu, &emu_expected) ) {
+			printf("Stoping all files test.\n");
+			exit(EXIT_FAILURE);
+		}
+	} else {
+		if (! single_file_test(argv[1], &emu, &emu_expected) ) {
+			printf("Stoping single file test.\n");
+			exit(EXIT_FAILURE);
+		}
 	}
-
-	cJSON *root = cJSON_Parse(content);	
-	if (root == NULL) {
-		printf("Error: JSON_ROOT is NULL\n");
-		cJSON_Delete(root);
-		free(content);
-		free(filename);
-		exit(EXIT_FAILURE);
-	}
-
-	if (! init_test(&(emu.cpu), &(emu_expected.cpu), &(emu.memory), &(emu_expected.memory), &root) )
-		printf("Error: Stoping test...\n");
-
-	cJSON_Delete(root);
-	free(content);
-	free(filename);
 	return 0;
 }

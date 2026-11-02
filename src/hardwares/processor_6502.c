@@ -5,9 +5,13 @@
 
 #define UNUSED(x)	(void)(x)
 
+#define ADDR_BRK	0xFFFE
+#define ADDR_STK	0x100
+
 #define NUM_OPCODES	0x100
 #define FLAG_NEG	0x80
 #define FLAG_OVF	0x40
+#define FLAG_NOEFFECT	0x20
 #define FLAG_BRK	0x10
 #define FLAG_DEC	0x08
 #define FLAG_INT	0x04
@@ -39,9 +43,11 @@ static bits_16 mode_zero_page_y(processor_6502 * processor, bits_8 force_oops);
 static bits_16 mode_absolute(processor_6502 * processor, bits_8 force_oops);
 static bits_16 mode_absolute_x(processor_6502 * processor, bits_8 force_oops);
 static bits_16 mode_absolute_y(processor_6502 * processor, bits_8 force_oops);
+static bits_16 mode_indirect(processor_6502 * processor, bits_8 force_oops);
 static bits_16 mode_indirect_x(processor_6502 * processor, bits_8 force_oops);
 static bits_16 mode_indirect_y(processor_6502 * processor, bits_8 force_oops);
 static bits_16 mode_implied(processor_6502 * processor, bits_8 force_oops);
+static bits_16 mode_relative(processor_6502 * processor, bits_8 force_oops);
 
 // OPCODE Functions
 // Access:
@@ -54,9 +60,7 @@ static void op_sty(processor_6502 * processor, bits_16 addr);
 // Transfer:
 static void op_tax(processor_6502 * processor, bits_16 addr);
 static void op_tay(processor_6502 * processor, bits_16 addr);
-static void op_tsx(processor_6502 * processor, bits_16 addr);
 static void op_txa(processor_6502 * processor, bits_16 addr);
-static void op_txs(processor_6502 * processor, bits_16 addr);
 static void op_tya(processor_6502 * processor, bits_16 addr);
 // Arithmetic:
 static void op_adc(processor_6502 * processor, bits_16 addr);
@@ -86,11 +90,47 @@ static void op_cmp(processor_6502 * processor, bits_16 addr);
 static void op_cpx(processor_6502 * processor, bits_16 addr);
 static void op_cpy(processor_6502 * processor, bits_16 addr);
 // Branch:
+static void op_bcc(processor_6502 * processor, bits_16 addr);
+static void op_bcs(processor_6502 * processor, bits_16 addr);
+static void op_beq(processor_6502 * processor, bits_16 addr);
+static void op_bne(processor_6502 * processor, bits_16 addr);
+static void op_bpl(processor_6502 * processor, bits_16 addr);
+static void op_bmi(processor_6502 * processor, bits_16 addr);
+static void op_bvc(processor_6502 * processor, bits_16 addr);
+static void op_bvs(processor_6502 * processor, bits_16 addr);
+// Jump:
+static void op_jmp(processor_6502 * processor, bits_16 addr);
+static void op_jsr(processor_6502 * processor, bits_16 addr);
+static void op_rts(processor_6502 * processor, bits_16 addr);
+static void op_brk(processor_6502 * processor, bits_16 addr);
+static void op_rti(processor_6502 * processor, bits_16 addr);
+// Stack
+static void op_pha(processor_6502 * processor, bits_16 addr);
+static void op_pla(processor_6502 * processor, bits_16 addr);
+static void op_php(processor_6502 * processor, bits_16 addr);
+static void op_plp(processor_6502 * processor, bits_16 addr);
+static void op_tsx(processor_6502 * processor, bits_16 addr);
+static void op_txs(processor_6502 * processor, bits_16 addr);
+// Flags
+static void op_clc(processor_6502 * processor, bits_16 addr);
+static void op_sec(processor_6502 * processor, bits_16 addr);
+static void op_cli(processor_6502 * processor, bits_16 addr);
+static void op_sei(processor_6502 * processor, bits_16 addr);
+static void op_cld(processor_6502 * processor, bits_16 addr);
+static void op_sed(processor_6502 * processor, bits_16 addr);
+static void op_clv(processor_6502 * processor, bits_16 addr);
+// Other
+static void op_nop(processor_6502 * processor, bits_16 addr);
 
 
 // Flags Management
 static void set_flag(processor_6502 * processor, bits_8 flag_mask, int condition);
 static void set_nz(processor_6502 * processor, bits_8 data);
+
+// Stack Management
+static void stack_push(processor_6502 * processor, uint8_t data);
+static uint8_t stack_pull(processor_6502 * processor);
+static uint8_t stack_read(processor_6502 * processor, uint8_t stack);
 
 // Others
 static uint16_t little_endian_solver(uint16_t low, uint16_t high, uint8_t add, uint16_t *carry);
@@ -101,7 +141,7 @@ static void handle_op_adc_decimal_mode(processor_6502 * p, uint8_t data);
 static void handle_op_adc_binary_mode(processor_6502 * p, uint8_t data);
 static void handle_op_sbc_decimal_mode(processor_6502 * p, uint8_t data);
 static void handle_op_sbc_binary_mode(processor_6502 * p, uint8_t data);
-
+static void handle_branch(processor_6502 * processor, uint16_t addr, uint8_t condition);
 
 
 /*
@@ -233,6 +273,32 @@ static const opcode_entry op_table[NUM_OPCODES] = {
 	[0xC0]	=	{ "CPY", op_cpy,	mode_immediate,		0 }, // PASSED
 	[0xC4]	=	{ "CPY", op_cpy,	mode_zero_page,		0 }, // PASSED
 	[0xCC]	=	{ "CPY", op_cpy,	mode_absolute,		0 }, // PASSED
+	[0x90]	=	{ "BCC", op_bcc,	mode_relative,		0 }, // PASSED
+	[0xB0]	=	{ "BCS", op_bcs,	mode_relative,		0 }, // PASSED
+	[0xF0]	=	{ "BEQ", op_beq,	mode_relative,		0 }, // PASSED
+	[0xD0]	=	{ "BNE", op_bne,	mode_relative,		0 }, // PASSED
+	[0x10]	=	{ "BPL", op_bpl,	mode_relative,		0 }, // PASSED
+	[0x30]	=	{ "BMI", op_bmi,	mode_relative,		0 }, // PASSED
+	[0x50]	=	{ "BVC", op_bvc,	mode_relative,		0 }, // PASSED
+	[0x70]	=	{ "BVS", op_bvs,	mode_relative,		0 }, // PASSED
+	[0x4C]	=	{ "JMP", op_jmp,	mode_absolute,		0 }, // PASSED
+	[0x6C]	=	{ "JMP", op_jmp,	mode_indirect,		0 }, // PASSED
+	[0x20]	=	{ "JSR", op_jsr,	mode_relative,		0 }, //	PASSED	Addressing Mode Absolute Hardcoded into the op_jsr.
+	[0x60]	=	{ "RTS", op_rts,	mode_implied,		0 }, // PASSED
+	[0x00]	=	{ "BRK", op_brk,	mode_immediate,		0 }, // PASSED
+	[0x40]	=	{ "RTI", op_rti,	mode_implied,		0 }, // PASSED
+	[0x48]	=	{ "PHA", op_pha,	mode_implied,		0 }, // PASSED
+	[0x68]	=	{ "PLA", op_pla,	mode_implied,		0 }, // PASSED
+	[0x08]	=	{ "PHP", op_php,	mode_implied,		0 }, // PASSED
+	[0x28]	=	{ "PLP", op_plp,	mode_implied,		0 }, // PASSED
+	[0x18]	=	{ "CLC", op_clc,	mode_implied,		0 }, // PASSED
+	[0x38]	=	{ "SEC", op_sec,	mode_implied,		0 }, // PASSED
+	[0x58]	=	{ "CLI", op_cli,	mode_implied,		0 }, // PASSED
+	[0x78]	=	{ "SEI", op_sei,	mode_implied,		0 }, // PASSED
+	[0xD8]	=	{ "CLD", op_cld,	mode_implied,		0 }, // PASSED
+	[0xF8]	=	{ "SED", op_sed,	mode_implied,		0 }, // PASSES
+	[0xB8]	=	{ "CLV", op_clv,	mode_implied,		0 }, // PASSED
+	[0xEA]	=	{ "NOP", op_nop,	mode_implied,		0 }, // PASSED
 };
 
 
@@ -248,6 +314,7 @@ static void processor_write(processor_6502 * processor, uint16_t address, uint8_
 	processor->bus.write_fn((void *) processor->bus.infra, address, data);
 }
 
+
 // >> OTHERS <<
 
 static uint16_t little_endian_solver(uint16_t low, uint16_t high, uint8_t add, uint16_t *carry)
@@ -261,11 +328,9 @@ static uint8_t oops(uint8_t force_oops, uint8_t condition)
 	return (uint8_t)(force_oops || condition);
 }
 
+
 // >> FLAGS <<
 
-/*
- * Description: Set flag using the MASK and the condition as parameter
- */
 static void set_flag(processor_6502 * processor, bits_8 flag_mask, int condition)
 {
 	if (condition)
@@ -274,14 +339,36 @@ static void set_flag(processor_6502 * processor, bits_8 flag_mask, int condition
 		processor->reg_p &= (~flag_mask);
 }
 
-/*
- * Description: Set ZERO FLAG and NEGATIVE FLAG
- */
 static void set_nz(processor_6502 * processor, bits_8 data)
 {
 	set_flag(processor, FLAG_ZER, (data == 0));
 	set_flag(processor, FLAG_NEG, ((data & FLAG_NEG) > 0));
 }
+
+
+// >> STACKS <<
+
+static void stack_push(processor_6502 * processor, uint8_t data)
+{
+	processor_write(processor, ADDR_STK + processor->reg_sp, data);
+	processor->reg_sp = (processor->reg_sp - 1) & 0xFF;
+}
+
+static uint8_t stack_pull(processor_6502 * processor)
+{
+	processor->reg_sp = (processor->reg_sp + 1) & 0xFF;
+	return processor_read(processor, ADDR_STK + processor->reg_sp);
+}
+
+static bits_8 stack_read(processor_6502 * processor, uint8_t stack)
+{
+	return processor_read(processor, ADDR_STK + stack);
+}
+
+
+
+
+
 
 // >> ADDRESSING MODES <<
 
@@ -353,6 +440,24 @@ static bits_16 mode_absolute_y(processor_6502 * processor, bits_8 force_oops)
 	return addr;
 }
 
+static bits_16 mode_indirect(processor_6502 * processor, bits_8 force_oops)
+{
+	bits_16 p_low	= processor_read(processor, processor->reg_pc++) & 0xFF;
+	bits_16 p_high	= processor_read(processor, processor->reg_pc++) & 0xFF;
+	bits_16 carry	= 0;
+	bits_16 low_addr= little_endian_solver(p_low, p_high, 0, &carry);
+	bits_16 low	= processor_read(processor, low_addr);
+	bits_16 high 	= 0;
+	// CPU BUG
+	if ( ((low_addr & 0x00FF) + 1) > 0x00FF )
+		high	= processor_read(processor, low_addr & 0xFF00);
+	else
+		high	= processor_read(processor, (low_addr + 1) & 0xFFFF);
+	bits_16 addr	= little_endian_solver(low, high, 0, &carry);
+	UNUSED(force_oops);
+	return addr;
+}
+
 static bits_16 mode_indirect_x(processor_6502 * processor, bits_8 force_oops)
 {
 	bits_16 l_addr	= processor_read(processor, processor->reg_pc++);
@@ -386,6 +491,20 @@ static bits_16 mode_implied(processor_6502 * processor, bits_8 force_oops)
 	UNUSED(force_oops);
 	return processor->reg_pc;
 }
+
+static bits_16 mode_relative(processor_6502 * processor, bits_8 force_oops)
+{
+	bits_16 addr	= processor->reg_pc++;
+	UNUSED(force_oops);
+	return addr;
+}
+
+
+
+
+
+
+
 
 // >> HANDLE FUNCTIONS <<
 
@@ -460,6 +579,33 @@ static void handle_op_sbc_binary_mode(processor_6502 * p, uint8_t data)
 	set_flag(p, FLAG_OVF, (r ^ old_a) & (r ^ (~(uint16_t)data)) & 0x0080);
 	set_flag(p, FLAG_NEG, (p->reg_a & FLAG_NEG) > 0);
 }
+
+static void handle_branch(processor_6502 * processor, uint16_t addr, uint8_t condition)
+{
+	int8_t relat 	= processor_read(processor, addr);
+	uint16_t low 	= processor->reg_pc & 0x00FF;
+	uint16_t high 	= processor->reg_pc & 0xFF00;
+	uint16_t low_buf= low;
+	if ( condition ) {
+		(void) processor_read(processor, processor->reg_pc);
+		low = (low + (int8_t)relat) & 0x00FF;
+		processor->reg_pc = high | low;
+		if ((low_buf + (int8_t)relat) > 0x00FF) {
+			processor_read(processor, processor->reg_pc);
+			processor->reg_pc += 0x100;
+		}
+		else if ((low_buf + (int8_t)relat) < 0) {
+			processor_read(processor, processor->reg_pc);
+			processor->reg_pc -= 0x100;
+		}	
+	}
+}
+
+
+
+
+
+
 
 // >> OPCODES <<
 
@@ -722,7 +868,6 @@ static void op_cpx(processor_6502 * processor, bits_16 addr)
 	set_flag(processor, FLAG_CAR, processor->reg_x >= data);
 	set_flag(processor, FLAG_ZER, processor->reg_x == data);
 	set_flag(processor, FLAG_NEG, (processor->reg_x - data) & FLAG_NEG);
-
 }
 
 static void op_cpy(processor_6502 * processor, bits_16 addr)
@@ -731,7 +876,188 @@ static void op_cpy(processor_6502 * processor, bits_16 addr)
 	set_flag(processor, FLAG_CAR, processor->reg_y >= data);
 	set_flag(processor, FLAG_ZER, processor->reg_y == data);
 	set_flag(processor, FLAG_NEG, (processor->reg_y - data) & FLAG_NEG);
+}
 
+static void op_bcc(processor_6502 * processor, bits_16 addr)
+{
+	handle_branch(processor, addr, (processor->reg_p & FLAG_CAR) == 0);
+}
+
+static void op_bcs(processor_6502 * processor, bits_16 addr)
+{
+	handle_branch(processor, addr, processor->reg_p & FLAG_CAR);
+}
+
+static void op_beq(processor_6502 * processor, bits_16 addr)
+{
+	handle_branch(processor, addr, (processor->reg_p & FLAG_ZER) > 0);
+}
+
+static void op_bne(processor_6502 * processor, bits_16 addr)
+{
+	handle_branch(processor, addr, (processor->reg_p & FLAG_ZER) == 0);
+}
+static void op_bpl(processor_6502 * processor, bits_16 addr)
+{
+	handle_branch(processor, addr, (processor->reg_p & FLAG_NEG) == 0);
+}
+
+static void op_bmi(processor_6502 * processor, bits_16 addr)
+{
+	handle_branch(processor, addr, (processor->reg_p & FLAG_NEG) > 0);
+}
+
+static void op_bvc(processor_6502 * processor, bits_16 addr)
+{
+	handle_branch(processor, addr, (processor->reg_p & FLAG_OVF) == 0);
+}
+
+static void op_bvs(processor_6502 * processor, bits_16 addr)
+{
+	handle_branch(processor, addr, (processor->reg_p & FLAG_OVF) > 0);
+}
+
+static void op_jmp(processor_6502 * processor, bits_16 addr)
+{
+	processor->reg_pc = addr;	
+}
+
+static void op_jsr(processor_6502 * processor, bits_16 addr)
+{
+	// Function containing the Addressing Mode Absolute
+	// 	and op_jsr operations all together because
+	//	of cycles reading and write order.
+	bits_8	high_pc 	= (uint8_t)((processor->reg_pc & 0xFF00) >> 8);
+	bits_8 	low_pc 		= (uint8_t)(processor->reg_pc & 0x00FF);
+	bits_16 low_addr 	= processor_read(processor, addr);
+	(void) stack_read(processor, processor->reg_sp);
+	stack_push(processor, high_pc);
+	stack_push(processor, low_pc);
+	bits_16	high_addr	= processor_read(processor, (addr + 1) & 0xFFFF);
+	bits_16 carry		= 0;
+	processor->reg_pc	= little_endian_solver(low_addr, high_addr, 0, &carry);
+}
+
+static void op_rts(processor_6502 * processor, bits_16 addr)
+{
+	(void) stack_read(processor, processor->reg_sp);	// Dummy Read
+	bits_8	low	= stack_pull(processor);
+	bits_8	high	= stack_pull(processor);
+	bits_16 carry	= 0;
+	processor->reg_pc = little_endian_solver(low, high, 0, &carry);
+	(void) processor_read(processor, processor->reg_pc);
+	processor->reg_pc++;
+	UNUSED(addr);
+}
+
+static void op_brk(processor_6502 * processor, bits_16 addr)
+{
+	(void) processor_read(processor, addr);
+	bits_8	high_pc		= (uint8_t)((processor->reg_pc & 0xFF00) >> 8);
+	bits_8	low_pc		= (uint8_t)(processor->reg_pc & 0x00FF);
+	stack_push(processor, high_pc);
+	stack_push(processor, low_pc);
+	set_flag(processor, FLAG_BRK, 1); 			// Just for Stacking
+	stack_push(processor, processor->reg_p);
+	set_flag(processor, FLAG_BRK, 0);			// Make break flag unset
+	set_flag(processor, FLAG_INT, 1);
+	bits_16	low_addr	= processor_read(processor, ADDR_BRK);
+	bits_16 high_addr	= processor_read(processor, ADDR_BRK + 1);
+	bits_16 carry		= 0;
+	processor->reg_pc	= little_endian_solver(low_addr, high_addr, 0, &carry);
+}
+
+static void op_rti(processor_6502 * processor, bits_16 addr)
+{
+	(void) stack_read(processor, processor->reg_sp);
+	processor->reg_p	= stack_pull(processor);
+	set_flag(processor, FLAG_BRK, 0);
+	set_flag(processor, FLAG_NOEFFECT, 1);
+	bits_16 low		= stack_pull(processor);
+	bits_16 high		= stack_pull(processor);
+	bits_16 carry		= 0;
+	processor->reg_pc	= little_endian_solver(low, high, 0, &carry);
+	UNUSED(addr);
+}
+
+static void op_pha(processor_6502 * processor, bits_16 addr)
+{
+	stack_push(processor, processor->reg_a);
+	UNUSED(addr);
+}
+
+static void op_pla(processor_6502 * processor, bits_16 addr)
+{
+	(void) stack_read(processor, processor->reg_sp);
+	processor->reg_a	= stack_pull(processor);
+	set_nz(processor, processor->reg_a);
+	UNUSED(addr);
+}
+
+static void op_php(processor_6502 * processor, bits_16 addr)
+{
+	set_flag(processor, FLAG_BRK, 1); 			// Just for stacking
+	stack_push(processor, processor->reg_p);
+	set_flag(processor, FLAG_BRK, 0);			// Unset BREAK FLAG
+	UNUSED(addr);
+}
+
+static void op_plp(processor_6502 * processor, bits_16 addr)
+{
+	(void) stack_read(processor, processor->reg_sp);
+	processor->reg_p	= stack_pull(processor);
+	set_flag(processor, FLAG_NOEFFECT, 1);			// Always SET
+	set_flag(processor, FLAG_BRK, 0);
+	UNUSED(addr);
+}
+
+static void op_clc(processor_6502 * processor, bits_16 addr)
+{
+	set_flag(processor, FLAG_CAR, 0);
+	UNUSED(addr);
+}
+
+static void op_sec(processor_6502 * processor, bits_16 addr)
+{
+	set_flag(processor, FLAG_CAR, 1);
+	UNUSED(addr);
+}
+
+static void op_cli(processor_6502 * processor, bits_16 addr)
+{
+	set_flag(processor, FLAG_INT, 0);
+	UNUSED(addr);
+}
+
+static void op_sei(processor_6502 * processor, bits_16 addr)
+{
+	set_flag(processor, FLAG_INT, 1);
+	UNUSED(addr);
+}
+
+static void op_cld(processor_6502 * processor, bits_16 addr)
+{
+	set_flag(processor, FLAG_DEC, 0);
+	UNUSED(addr);
+}
+
+static void op_sed(processor_6502 * processor, bits_16 addr)
+{
+	set_flag(processor, FLAG_DEC, 1);
+	UNUSED(addr);
+}
+
+static void op_clv(processor_6502 * processor, bits_16 addr)
+{
+	set_flag(processor, FLAG_OVF, 0);
+	UNUSED(addr);
+}
+
+static void op_nop(processor_6502 * processor, bits_16 addr)
+{
+	// Literally NO OPERATION...
+	UNUSED(processor);
+	UNUSED(addr);
 }
 
 // >> PUBLIC FUNCTIONS <<
@@ -745,7 +1071,7 @@ void init_6502(processor_6502 * processor)
 	processor->reg_p 	= 0x24;
 	processor->read_write	= 0x00;
 	processor->reg_pc 	= 0x8000;
-	processor->cycles 	= 0x00;	
+	processor->cycles 	= 0x00;
 }
 
 void execute_opcode(processor_6502 * processor, memory_16 * memory)
