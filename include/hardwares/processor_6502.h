@@ -36,7 +36,8 @@ typedef struct 	{
 
 
 // Public Functions
-void init_6502(processor_6502 * processor);
+void get_opcode_infos(uint8_t opcode, char **name, char **mode);
+void init_6502(processor_6502 * processor, uint16_t start_pc_addr);
 void execute_opcode(processor_6502 * processor, memory_16 * memory);
 
 #endif

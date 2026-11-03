@@ -1,6 +1,6 @@
 #include "../include/debugger.h"
-#include "../include/terminal_ui.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdint.h>
 
 #define SCREEN_HEIGHT		31
@@ -19,35 +19,54 @@
 #define DOWN_RIGHT_PANEL_LINE	(HSPLIT_POSITION + 1)
 #define DOWN_RIGHT_PANEL_COLUMN (VSPLIT_POSITION + 1)
 
-typedef struct {
-	char 	*opname;
-	char 	*addr_mode;
-	char 	*sintax;
-} opcode_info;
-
-static const opcode_info opcodes_info[0x100] = {
-	[0xA9]	=	{ "LDA", 	"Immediate",	"LDA #$??" },
-	[0xA5]	=	{ "LDA", 	"Zero Page", 	"LDA $??" },
-	[0xB5]	=	{ "LDA", 	"Zero Page, X", "LDA $??,X" },
-	[0x85]	=	{ "STA", 	"Zero Page",	"STA $??" },
-	[0x95] 	=	{ "STA", 	"Zero Page, X",	"STA $??,X" },
-	[0xA2]	=	{ "LDX", 	"Immediate",	"LDX #$??" },
-	[0xA6]	=	{ "LDX",	"Zero Page",	"LDX $??" }
-};
-
 static uint8_t previous_zero_page[0x100] = {0};
+
+void u8_decimal_to_binary_string_(uint8_t v, char * b)
+{
+	uint8_t i = 0;
+	uint8_t mask = 1;
+	for (; i < 8; i++) {
+		b[i] = ( (v & (mask << (7-i))) > 0 ) ? '1' : '0';
+	}
+	b[i] = '\0';
+
+}
 
 void show_current_opcode(memory_16 * memory, uint16_t reg_pc)
 {
 	uint8_t opcode = memory_read(memory, reg_pc);
-	opcode_info op_inf = opcodes_info[opcode];
-	if (op_inf.sintax == NULL) {
+	char *opcode_name = NULL;
+	char *addr_mode_name = NULL;
+
+	get_opcode_infos(opcode, &opcode_name, &addr_mode_name);
+	if (opcode_name  == NULL) {
 		tui_change_terminal_color(COLOR_BACK_RED);
 		printf("OPCODE: <UNKOWN>");
 		tui_terminal_color_default();
-
 	} else {
-		printf("OPCODE: %s\t;Adressing Mode: %s", op_inf.sintax, op_inf.addr_mode);
+		tui_change_terminal_color(COLOR_FORE_GREEN);
+		printf("OPCODE: %s, %s", opcode_name, addr_mode_name);
+		tui_terminal_color_default();
+	}
+
+	free(opcode_name);
+	free(addr_mode_name);
+}
+
+void show_formated_flags(uint8_t flag)
+{
+	char *formated = "NV1BDIZC";
+	uint8_t mask = (1) << 7;
+
+	for (uint8_t i = 0; i < 8; i++) {
+		if ((flag & mask) > 0) {
+			tui_change_terminal_color(COLOR_FORE_GREEN);
+			printf("%c", formated[i]);
+			tui_terminal_color_default();
+		} else {
+			printf("%c", formated[i]);
+		}
+		mask = mask >> 1;
 	}
 }
 
@@ -61,6 +80,7 @@ void drawn_rom(memory_16 * memory, uint16_t reg_pc)
 {
 	uint8_t line_pos = ROM_LINE;
 	uint8_t col_pos = ROM_COLUM + 1;
+	uint32_t current_page = reg_pc & 0xFF00;
 
 	tui_move_cursor_coord(line_pos, col_pos);
 	printf("=-=-=-=-=-=-=-=-=-=-=-=-=-= ROM -=-=-=-=-=-=-=-=-=-=-=-=-");
@@ -68,7 +88,7 @@ void drawn_rom(memory_16 * memory, uint16_t reg_pc)
 	tui_move_cursor_coord(++line_pos, col_pos);
 	printf("      00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F");
 	tui_move_cursor_coord(++line_pos, col_pos);
-	for (uint32_t i = 0x8000; i < 0x8100; i++) {
+	for (uint32_t i = current_page; i < (current_page + 0x100); i++) {
 		if ((i % 0x10) == 0) {
 			tui_move_cursor_coord(++line_pos, col_pos);
 			printf("%02x  ", i);
@@ -118,14 +138,22 @@ void drawn_registers(memory_16 * memory, processor_6502 * processor)
 	uint8_t line_pos = REGISTERS_LINE;
 	uint8_t col_pos = REGISTERS_COLUMN + 1;
 
+	char flag[9] = {0};
+	
+	u8_decimal_to_binary_string_(processor->reg_p, flag);	
+
 	tui_move_cursor_coord(line_pos, col_pos);
 	printf("=-=-=-=-=-=-=-=-=-=-=- 6502 REGISTERS  =-=-=-=-=-=-=-=-=-=");
 	tui_move_cursor_coord(++line_pos, col_pos);
-	printf("A:%02x\tX:%02x\tY:%02x\tFLAG:%02x", processor->reg_a, processor->reg_x, processor->reg_y, processor->reg_p);
+	printf("A:%02x\tX:%02x\tY:%02x\t\tFLAG:", processor->reg_a, processor->reg_x, processor->reg_y);
+	show_formated_flags(processor->reg_p);
 	tui_move_cursor_coord(++line_pos,col_pos);
-	printf("Program Counter:%02x", processor->reg_pc);
+	show_current_opcode(memory, processor->reg_pc);	
 	tui_move_cursor_coord(++line_pos,col_pos);
-	show_current_opcode(memory, processor->reg_pc);
+	printf("Program Counter:\t\t0x%02x", processor->reg_pc);
+	tui_move_cursor_coord(++line_pos,col_pos);
+	printf("Cycles:\t\t\t%016lx", processor->cycles);
+
 }
 
 void down_right_panel()

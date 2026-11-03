@@ -1,6 +1,3 @@
-#include "./../../include/infrastructure.h"
-#include "./../../include/hardwares/processor_6502.h"
-#include "./../../include/hardwares/memory_16.h"
 #include "./../../emulators/raw/raw.h"
 #include "./../../thirdparty/cJson/cJSON.h"
 #include <stdio.h>

@@ -11,7 +11,7 @@ typedef struct {
 
 // Public Functions
 uint8_t memory_read(memory_16 * memory, uint16_t address);
+uint8_t	write_rom(memory_16 * memory, const char *rom_bin, uint16_t addr_start);
 void	memory_write(memory_16 * memory, uint16_t address, uint8_t data);
-void	write_rom(memory_16 * memory, const char *rom_bin);
 void 	print_zero_page(memory_16 * memory);
 #endif

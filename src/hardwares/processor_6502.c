@@ -2,8 +2,10 @@
 #include "./../../include/buses.h"
 #include "./../../include/hardwares/memory_16.h"
 #include <stdio.h>
+#include <stdlib.h>
 
 #define UNUSED(x)	(void)(x)
+//#define DEBUG
 
 #define ADDR_BRK	0xFFFE
 #define ADDR_STK	0x100
@@ -26,6 +28,7 @@ typedef void	(*op_fn) (processor_6502 * processor, bits_16 addr);
 // Description: Opcode Structure.
 typedef struct {
 	const char	*op_name;
+	const char	*mode_name;
 	op_fn		op;
 	addr_fn		mode;
 	bits_8		force_oops; // Force Dummy Cycles;
@@ -148,157 +151,157 @@ static void handle_branch(processor_6502 * processor, uint16_t addr, uint8_t con
  * Description: A table containing all OPCODES
  */
 static const opcode_entry op_table[NUM_OPCODES] = {
-	[0xA9]	=	{ "LDA", op_lda, 	mode_immediate, 	0 }, // PASSED
-	[0xA5]	=	{ "LDA", op_lda, 	mode_zero_page, 	0 }, // PASSED
-	[0xB5]	=	{ "LDA", op_lda, 	mode_zero_page_x, 	0 }, //	PASSED
-	[0xAD]	=	{ "LDA", op_lda, 	mode_absolute,		0 }, // PASSED
-	[0xBD]	=	{ "LDA", op_lda, 	mode_absolute_x,	0 }, // PASSED
-	[0xB9]	=	{ "LDA", op_lda, 	mode_absolute_y,	0 }, // PASSED
-	[0xA1]	=	{ "LDA", op_lda, 	mode_indirect_x,	0 }, // PASSED
-	[0xB1]	=	{ "LDA", op_lda, 	mode_indirect_y, 	0 }, // PASSED
-	[0xA2]	=	{ "LDX", op_ldx, 	mode_immediate, 	0 }, // PASSED
-	[0xA6]	=	{ "LDX", op_ldx, 	mode_zero_page, 	0 }, // PASSED
-	[0xB6]	=	{ "LDX", op_ldx, 	mode_zero_page_y,	0 }, // PASSED
-	[0xAE]	=	{ "LDX", op_ldx, 	mode_absolute,		0 }, // PASSED
-	[0xBE]	=	{ "LDX", op_ldx, 	mode_absolute_y,	0 }, // PASSED
-	[0xA0]	=	{ "LDY", op_ldy, 	mode_immediate,		0 }, // PASSED
-	[0xA4]	=	{ "LDY", op_ldy, 	mode_zero_page,		0 }, // PASSED
-	[0xB4]	=	{ "LDY", op_ldy, 	mode_zero_page_x, 	0 }, // PASSED
-	[0xAC]	=	{ "LDY", op_ldy, 	mode_absolute,		0 }, // PASSED
-	[0xBC]	=	{ "LDY", op_ldy, 	mode_absolute_x,	0 }, // PASSED
-	[0x85]	=	{ "STA", op_sta, 	mode_zero_page,		1 }, // PASSED
-	[0x95]	=	{ "STA", op_sta, 	mode_zero_page_x,	1 }, // PASSED
-	[0x8D]	=	{ "STA", op_sta, 	mode_absolute,		1 }, // PASSED
-	[0x9D]	=	{ "STA", op_sta, 	mode_absolute_x,	1 }, // PASSED
-	[0x99]	=	{ "STA", op_sta, 	mode_absolute_y,	1 }, // PASSED
-	[0x81]	=	{ "STA", op_sta, 	mode_indirect_x,	1 }, // PASSED
-	[0x91]	=	{ "STA", op_sta, 	mode_indirect_y,	1 }, // PASSED
-	[0x86]	=	{ "STX", op_stx, 	mode_zero_page,		1 }, // PASSED
-	[0x96]	=	{ "STX", op_stx, 	mode_zero_page_y,	1 }, // PASSED
-	[0x8E]	=	{ "STX", op_stx, 	mode_absolute,		1 }, // PASSED
-	[0x84]	=	{ "STY", op_sty, 	mode_zero_page,		1 }, // PASSED
-	[0x94]	=	{ "STY", op_sty, 	mode_zero_page_x,	1 }, // PASSED
-	[0x8C]	=	{ "STY", op_sty, 	mode_absolute,		1 }, // PASSED
-	[0xAA]	=	{ "TAX", op_tax, 	mode_implied,		0 }, // PASSED
-	[0xA8]	=	{ "TAY", op_tay, 	mode_implied,		0 }, // PASSED
-	[0xBA]	=	{ "TSX", op_tsx, 	mode_implied, 		0 }, // PASSED
-	[0x8A]	=	{ "TXA", op_txa, 	mode_implied, 		0 }, // PASSED
-	[0x9A]	=	{ "TXS", op_txs, 	mode_implied,		0 }, // PASSED
-	[0x98]	=	{ "TYA", op_tya, 	mode_implied,		0 }, // PASSED
-	[0x69]	=	{ "ADC", op_adc, 	mode_immediate,		0 }, // PASSED
-	[0x65]	=	{ "ADC", op_adc, 	mode_zero_page,		0 }, // PASSED
-	[0x75]	=	{ "ADC", op_adc, 	mode_zero_page_x,	0 }, // PASSED
-	[0x6D]	=	{ "ADC", op_adc, 	mode_absolute,		0 }, // PASSED
-	[0x7D]	=	{ "ADC", op_adc, 	mode_absolute_x,	0 }, // PASSED
-	[0x79]	=	{ "ADC", op_adc, 	mode_absolute_y,	0 }, // PASSED
-	[0x61]	=	{ "ADC", op_adc, 	mode_indirect_x,	0 }, // PASSED 
-	[0x71]	=	{ "ADC", op_adc, 	mode_indirect_y,	0 }, // PASSED 
-	[0xE9]	=	{ "SBC", op_sbc, 	mode_immediate,		0 }, // PASSED
-	[0xE5]	=	{ "SBC", op_sbc, 	mode_zero_page,		0 }, // PASSED
-	[0xF5]	=	{ "SBC", op_sbc, 	mode_zero_page_x,	0 }, // PASSED
-	[0xED]	=	{ "SBC", op_sbc, 	mode_absolute,		0 }, // PASSED
-	[0xFD]	=	{ "SBC", op_sbc, 	mode_absolute_x,	0 }, // PASSED
-	[0xF9]	=	{ "SBC", op_sbc, 	mode_absolute_y, 	0 }, // PASSED
-	[0xE1]	=	{ "SBC", op_sbc, 	mode_indirect_x,	0 }, // PASSED
-	[0xF1]	=	{ "SBC", op_sbc, 	mode_indirect_y,	0 }, // PASSED
-	[0xE6]	=	{ "INC", op_inc, 	mode_zero_page,		1 }, // PASSED
-	[0xF6]	=	{ "INC", op_inc, 	mode_zero_page_x,	1 }, // PASSED
-	[0xEE]	=	{ "INC", op_inc, 	mode_absolute,		1 }, // PASSED
-	[0xFE]	=	{ "INC", op_inc, 	mode_absolute_x,	1 }, // PASSED
-	[0xC6]	=	{ "DEC", op_dec, 	mode_zero_page, 	1 }, // PASSED
-	[0xD6]	=	{ "DEC", op_dec, 	mode_zero_page_x,	1 }, // PASSED
-	[0xCE]	=	{ "DEC", op_dec, 	mode_absolute,		1 }, // PASSED
-	[0xDE]	=	{ "DEC", op_dec, 	mode_absolute_x,	1 }, // PASSED
-	[0xE8]	=	{ "INX", op_inx, 	mode_implied,		0 }, // PASSED
-	[0xCA]	=	{ "DEX", op_dex, 	mode_implied,		0 }, // PASSED
-	[0xC8]	=	{ "INY", op_iny, 	mode_implied,		0 }, // PASSED
-	[0x88]	=	{ "DEY", op_dey, 	mode_implied,		0 }, // PASSED
-	[0x0A]	=	{ "ASL", op_asl_accum,	mode_implied,		1 }, // PASSED
-	[0x06]	=	{ "ASL", op_asl,	mode_zero_page,		1 }, // PASSED
-	[0x16]	=	{ "ASL", op_asl,	mode_zero_page_x,	1 }, // PASSED
-	[0x0E]	=	{ "ASL", op_asl, 	mode_absolute,		1 }, // PASSED
-	[0x1E]	=	{ "ASL", op_asl,	mode_absolute_x,	1 }, // PASSED
-	[0x4A]	=	{ "LSR", op_lsr_accum,	mode_implied,		1 }, // PASSED
-	[0x46]	=	{ "LSR", op_lsr,	mode_zero_page,		1 }, // PASSED
-	[0x56]	=	{ "LSR", op_lsr,	mode_zero_page_x,	1 }, // PASSED
-	[0x4E]	=	{ "LSR", op_lsr,	mode_absolute,		1 }, // PASSED
-	[0x5E]	=	{ "LSR", op_lsr,	mode_absolute_x,	1 }, // PASSED
-	[0x2A]	=	{ "ROL", op_rol_accum,	mode_implied,		1 }, // PASSED
-	[0x26]	=	{ "ROL", op_rol,	mode_zero_page,		1 }, // PASSED
-	[0x36]	=	{ "ROL", op_rol,	mode_zero_page_x,	1 }, // PASSED
-	[0x2E]	=	{ "ROL", op_rol,	mode_absolute,		1 }, // PASSED
-	[0x3E]	=	{ "ROL", op_rol,	mode_absolute_x,	1 }, // PASSED
-	[0x6A]	=	{ "ROR", op_ror_accum,	mode_implied,		1 }, // PASSED
-	[0x66]	=	{ "ROR", op_ror,	mode_zero_page,		1 }, // PASSED
-	[0x76]	=	{ "ROR", op_ror,	mode_zero_page_x,	1 }, // PASSED
-	[0x6E]	=	{ "ROR", op_ror,	mode_absolute,		1 }, // PASSED
-	[0x7E]	=	{ "ROR", op_ror,	mode_absolute_x,	1 }, // PASSED
-	[0x29]	=	{ "AND", op_and,	mode_immediate,		0 }, // PASSED
-	[0x25]	=	{ "AND", op_and,	mode_zero_page,		0 }, // PASSED
-	[0x35]	=	{ "AND", op_and,	mode_zero_page_x,	0 }, // PASSED
-	[0x2D]	=	{ "AND", op_and,	mode_absolute,		0 }, // PASSED
-	[0x3D]	=	{ "AND", op_and,	mode_absolute_x,	0 }, // PASSED
-	[0x39]	=	{ "AND", op_and,	mode_absolute_y,	0 }, // PASSED
-	[0x21]	=	{ "AND", op_and,	mode_indirect_x,	0 }, // PASSED
-	[0x31]	=	{ "AND", op_and,	mode_indirect_y,	0 }, // PASSED
-	[0x09]	=	{ "ORA", op_ora,	mode_immediate,		0 }, // PASSED
-	[0x05]	=	{ "ORA", op_ora,	mode_zero_page,		0 }, // PASSED
-	[0x15]	=	{ "ORA", op_ora,	mode_zero_page_x,	0 }, // PASSED
-	[0x0D]	=	{ "ORA", op_ora,	mode_absolute,		0 }, // PASSED
-	[0x1D]	=	{ "ORA", op_ora,	mode_absolute_x,	0 }, // PASSED
-	[0x19]	=	{ "ORA", op_ora,	mode_absolute_y,	0 }, // PASSED
-	[0x01]	=	{ "ORA", op_ora,	mode_indirect_x,	0 }, // PASSED
-	[0x11]	=	{ "ORA", op_ora,	mode_indirect_y,	0 }, // PASSED
-	[0x49]	=	{ "EOR", op_eor,	mode_immediate,		0 }, // PASSED
-	[0x45]	=	{ "EOR", op_eor,	mode_zero_page,		0 }, // PASSED
-	[0x55]	=	{ "EOR", op_eor,	mode_zero_page_x,	0 }, // PASSED
-	[0x4D]	=	{ "EOR", op_eor,	mode_absolute,		0 }, // PASSED
-	[0x5D]	=	{ "EOR", op_eor,	mode_absolute_x,	0 }, // PASSED
-	[0x59]	=	{ "EOR", op_eor,	mode_absolute_y,	0 }, // PASSED
-	[0x41]	=	{ "EOR", op_eor,	mode_indirect_x,	0 }, // PASSED
-	[0x51]	=	{ "EOR", op_eor,	mode_indirect_y,	0 }, // PASSED
-	[0x24]	=	{ "BIT", op_bit,	mode_zero_page,		0 }, // PASSED
-	[0x2C]	=	{ "BIT", op_bit,	mode_absolute,		0 }, // PASSED
-	[0xC9]	=	{ "CMP", op_cmp,	mode_immediate,		0 }, // PASSED
-	[0xC5]	=	{ "CMP", op_cmp,	mode_zero_page,		0 }, // PASSED
-	[0xD5]	=	{ "CMP", op_cmp,	mode_zero_page_x,	0 }, // PASSED
-	[0xCD]	=	{ "CMP", op_cmp,	mode_absolute,		0 }, // PASSED
-	[0xDD]	=	{ "CMP", op_cmp,	mode_absolute_x,	0 }, // PASSED
-	[0xD9]	=	{ "CMP", op_cmp,	mode_absolute_y,	0 }, // PASSED
-	[0xC1]	=	{ "CMP", op_cmp,	mode_indirect_x,	0 }, // PASSED
-	[0xD1]	=	{ "CMP", op_cmp,	mode_indirect_y,	0 }, // PASSED
-	[0xE0]	=	{ "CMX", op_cpx,	mode_immediate,		0 }, // PASSED
-	[0xE4]	=	{ "CPX", op_cpx,	mode_zero_page,		0 }, // PASSED
-	[0xEC]	=	{ "CPX", op_cpx,	mode_absolute,		0 }, // PASSED
-	[0xC0]	=	{ "CPY", op_cpy,	mode_immediate,		0 }, // PASSED
-	[0xC4]	=	{ "CPY", op_cpy,	mode_zero_page,		0 }, // PASSED
-	[0xCC]	=	{ "CPY", op_cpy,	mode_absolute,		0 }, // PASSED
-	[0x90]	=	{ "BCC", op_bcc,	mode_relative,		0 }, // PASSED
-	[0xB0]	=	{ "BCS", op_bcs,	mode_relative,		0 }, // PASSED
-	[0xF0]	=	{ "BEQ", op_beq,	mode_relative,		0 }, // PASSED
-	[0xD0]	=	{ "BNE", op_bne,	mode_relative,		0 }, // PASSED
-	[0x10]	=	{ "BPL", op_bpl,	mode_relative,		0 }, // PASSED
-	[0x30]	=	{ "BMI", op_bmi,	mode_relative,		0 }, // PASSED
-	[0x50]	=	{ "BVC", op_bvc,	mode_relative,		0 }, // PASSED
-	[0x70]	=	{ "BVS", op_bvs,	mode_relative,		0 }, // PASSED
-	[0x4C]	=	{ "JMP", op_jmp,	mode_absolute,		0 }, // PASSED
-	[0x6C]	=	{ "JMP", op_jmp,	mode_indirect,		0 }, // PASSED
-	[0x20]	=	{ "JSR", op_jsr,	mode_relative,		0 }, //	PASSED	Addressing Mode Absolute Hardcoded into the op_jsr.
-	[0x60]	=	{ "RTS", op_rts,	mode_implied,		0 }, // PASSED
-	[0x00]	=	{ "BRK", op_brk,	mode_immediate,		0 }, // PASSED
-	[0x40]	=	{ "RTI", op_rti,	mode_implied,		0 }, // PASSED
-	[0x48]	=	{ "PHA", op_pha,	mode_implied,		0 }, // PASSED
-	[0x68]	=	{ "PLA", op_pla,	mode_implied,		0 }, // PASSED
-	[0x08]	=	{ "PHP", op_php,	mode_implied,		0 }, // PASSED
-	[0x28]	=	{ "PLP", op_plp,	mode_implied,		0 }, // PASSED
-	[0x18]	=	{ "CLC", op_clc,	mode_implied,		0 }, // PASSED
-	[0x38]	=	{ "SEC", op_sec,	mode_implied,		0 }, // PASSED
-	[0x58]	=	{ "CLI", op_cli,	mode_implied,		0 }, // PASSED
-	[0x78]	=	{ "SEI", op_sei,	mode_implied,		0 }, // PASSED
-	[0xD8]	=	{ "CLD", op_cld,	mode_implied,		0 }, // PASSED
-	[0xF8]	=	{ "SED", op_sed,	mode_implied,		0 }, // PASSES
-	[0xB8]	=	{ "CLV", op_clv,	mode_implied,		0 }, // PASSED
-	[0xEA]	=	{ "NOP", op_nop,	mode_implied,		0 }, // PASSED
+	[0xA9]	=	{ "LDA", "Immediate",		op_lda, 	mode_immediate, 	0 }, // PASSED
+	[0xA5]	=	{ "LDA", "Zero Page",		op_lda, 	mode_zero_page, 	0 }, // PASSED
+	[0xB5]	=	{ "LDA", "Zero Page,X",		op_lda, 	mode_zero_page_x, 	0 }, //	PASSED
+	[0xAD]	=	{ "LDA", "Absolute",		op_lda, 	mode_absolute,		0 }, // PASSED
+	[0xBD]	=	{ "LDA", "Absolute,X",		op_lda, 	mode_absolute_x,	0 }, // PASSED
+	[0xB9]	=	{ "LDA", "Absolute,Y",		op_lda, 	mode_absolute_y,	0 }, // PASSED
+	[0xA1]	=	{ "LDA", "(Indirect,X)",	op_lda, 	mode_indirect_x,	0 }, // PASSED
+	[0xB1]	=	{ "LDA", "(Indirect),Y",	op_lda, 	mode_indirect_y, 	0 }, // PASSED
+	[0xA2]	=	{ "LDX", "Immediate",		op_ldx, 	mode_immediate, 	0 }, // PASSED
+	[0xA6]	=	{ "LDX", "Zero Page",		op_ldx, 	mode_zero_page, 	0 }, // PASSED
+	[0xB6]	=	{ "LDX", "Zero Page,Y",		op_ldx, 	mode_zero_page_y,	0 }, // PASSED
+	[0xAE]	=	{ "LDX", "Absolute",		op_ldx, 	mode_absolute,		0 }, // PASSED
+	[0xBE]	=	{ "LDX", "Absolute,Y",		op_ldx, 	mode_absolute_y,	0 }, // PASSED
+	[0xA0]	=	{ "LDY", "Immediate",		op_ldy, 	mode_immediate,		0 }, // PASSED
+	[0xA4]	=	{ "LDY", "Zero Page",		op_ldy, 	mode_zero_page,		0 }, // PASSED
+	[0xB4]	=	{ "LDY", "Zero, Page,X",	op_ldy, 	mode_zero_page_x, 	0 }, // PASSED
+	[0xAC]	=	{ "LDY", "Absolute",		op_ldy, 	mode_absolute,		0 }, // PASSED
+	[0xBC]	=	{ "LDY", "Absolute,X",		op_ldy, 	mode_absolute_x,	0 }, // PASSED
+	[0x85]	=	{ "STA", "Zero Page",		op_sta, 	mode_zero_page,		1 }, // PASSED
+	[0x95]	=	{ "STA", "Zero Page,X",		op_sta, 	mode_zero_page_x,	1 }, // PASSED
+	[0x8D]	=	{ "STA", "Absolute",		op_sta, 	mode_absolute,		1 }, // PASSED
+	[0x9D]	=	{ "STA", "Absolute,X",		op_sta, 	mode_absolute_x,	1 }, // PASSED
+	[0x99]	=	{ "STA", "Absolute,Y",		op_sta, 	mode_absolute_y,	1 }, // PASSED
+	[0x81]	=	{ "STA", "(Indirect,X)",	op_sta, 	mode_indirect_x,	1 }, // PASSED
+	[0x91]	=	{ "STA", "(Indirect),Y",	op_sta, 	mode_indirect_y,	1 }, // PASSED
+	[0x86]	=	{ "STX", "Zero Page",		op_stx, 	mode_zero_page,		1 }, // PASSED
+	[0x96]	=	{ "STX", "Zero Page,Y",		op_stx, 	mode_zero_page_y,	1 }, // PASSED
+	[0x8E]	=	{ "STX", "Absolute",		op_stx, 	mode_absolute,		1 }, // PASSED
+	[0x84]	=	{ "STY", "Zero Page",		op_sty, 	mode_zero_page,		1 }, // PASSED
+	[0x94]	=	{ "STY", "Zero Page,X",		op_sty, 	mode_zero_page_x,	1 }, // PASSED
+	[0x8C]	=	{ "STY", "Absolute",		op_sty, 	mode_absolute,		1 }, // PASSED
+	[0xAA]	=	{ "TAX", "Implied",		op_tax, 	mode_implied,		0 }, // PASSED
+	[0xA8]	=	{ "TAY", "Implied",		op_tay, 	mode_implied,		0 }, // PASSED
+	[0xBA]	=	{ "TSX", "Implied",		op_tsx, 	mode_implied, 		0 }, // PASSED
+	[0x8A]	=	{ "TXA", "Implied",		op_txa, 	mode_implied, 		0 }, // PASSED
+	[0x9A]	=	{ "TXS", "Implied",		op_txs, 	mode_implied,		0 }, // PASSED
+	[0x98]	=	{ "TYA", "Implied",		op_tya, 	mode_implied,		0 }, // PASSED
+	[0x69]	=	{ "ADC", "Immediate",		op_adc, 	mode_immediate,		0 }, // PASSED
+	[0x65]	=	{ "ADC", "Zero Page",		op_adc, 	mode_zero_page,		0 }, // PASSED
+	[0x75]	=	{ "ADC", "Zero Page,X",		op_adc, 	mode_zero_page_x,	0 }, // PASSED
+	[0x6D]	=	{ "ADC", "Absolute",		op_adc, 	mode_absolute,		0 }, // PASSED
+	[0x7D]	=	{ "ADC", "Absolute,X",		op_adc, 	mode_absolute_x,	0 }, // PASSED
+	[0x79]	=	{ "ADC", "Absolute,Y",		op_adc, 	mode_absolute_y,	0 }, // PASSED
+	[0x61]	=	{ "ADC", "(Indirect,X)",	op_adc, 	mode_indirect_x,	0 }, // PASSED 
+	[0x71]	=	{ "ADC", "(Indirect),Y",	op_adc, 	mode_indirect_y,	0 }, // PASSED 
+	[0xE9]	=	{ "SBC", "Immediate",		op_sbc, 	mode_immediate,		0 }, // PASSED
+	[0xE5]	=	{ "SBC", "Zero Page",		op_sbc, 	mode_zero_page,		0 }, // PASSED
+	[0xF5]	=	{ "SBC", "Zero Page,X",		op_sbc, 	mode_zero_page_x,	0 }, // PASSED
+	[0xED]	=	{ "SBC", "Absolute",		op_sbc, 	mode_absolute,		0 }, // PASSED
+	[0xFD]	=	{ "SBC", "Absolute,X",		op_sbc, 	mode_absolute_x,	0 }, // PASSED
+	[0xF9]	=	{ "SBC", "Absolute,Y",		op_sbc, 	mode_absolute_y, 	0 }, // PASSED
+	[0xE1]	=	{ "SBC", "(Indirect,X)",	op_sbc, 	mode_indirect_x,	0 }, // PASSED
+	[0xF1]	=	{ "SBC", "(Indirect),Y",	op_sbc, 	mode_indirect_y,	0 }, // PASSED
+	[0xE6]	=	{ "INC", "Zero Page",		op_inc, 	mode_zero_page,		1 }, // PASSED
+	[0xF6]	=	{ "INC", "Zero Page,X",		op_inc, 	mode_zero_page_x,	1 }, // PASSED
+	[0xEE]	=	{ "INC", "Absolute",		op_inc, 	mode_absolute,		1 }, // PASSED
+	[0xFE]	=	{ "INC", "Absolute,X",		op_inc, 	mode_absolute_x,	1 }, // PASSED
+	[0xC6]	=	{ "DEC", "Zero Page",		op_dec, 	mode_zero_page, 	1 }, // PASSED
+	[0xD6]	=	{ "DEC", "Zero Page,X",		op_dec, 	mode_zero_page_x,	1 }, // PASSED
+	[0xCE]	=	{ "DEC", "Absolute",		op_dec, 	mode_absolute,		1 }, // PASSED
+	[0xDE]	=	{ "DEC", "Absolute,X",		op_dec, 	mode_absolute_x,	1 }, // PASSED
+	[0xE8]	=	{ "INX", "Implied",		op_inx, 	mode_implied,		0 }, // PASSED
+	[0xCA]	=	{ "DEX", "Implied",		op_dex, 	mode_implied,		0 }, // PASSED
+	[0xC8]	=	{ "INY", "Implied",		op_iny, 	mode_implied,		0 }, // PASSED
+	[0x88]	=	{ "DEY", "Implied",		op_dey, 	mode_implied,		0 }, // PASSED
+	[0x0A]	=	{ "ASL", "Implied",		op_asl_accum,	mode_implied,		1 }, // PASSED
+	[0x06]	=	{ "ASL", "Zero Page",		op_asl,		mode_zero_page,		1 }, // PASSED
+	[0x16]	=	{ "ASL", "Zero Page,X",		op_asl,		mode_zero_page_x,	1 }, // PASSED
+	[0x0E]	=	{ "ASL", "Absolute",		op_asl, 	mode_absolute,		1 }, // PASSED
+	[0x1E]	=	{ "ASL", "Absolute,X",		op_asl,		mode_absolute_x,	1 }, // PASSED
+	[0x4A]	=	{ "LSR", "Implied",		op_lsr_accum,	mode_implied,		1 }, // PASSED
+	[0x46]	=	{ "LSR", "Zero Page",		op_lsr,		mode_zero_page,		1 }, // PASSED
+	[0x56]	=	{ "LSR", "Zero Page,X",		op_lsr,		mode_zero_page_x,	1 }, // PASSED
+	[0x4E]	=	{ "LSR", "Absolute",		op_lsr,		mode_absolute,		1 }, // PASSED
+	[0x5E]	=	{ "LSR", "Absolute,X",		op_lsr,		mode_absolute_x,	1 }, // PASSED
+	[0x2A]	=	{ "ROL", "Implied",		op_rol_accum,	mode_implied,		1 }, // PASSED
+	[0x26]	=	{ "ROL", "Zero Page",		op_rol,		mode_zero_page,		1 }, // PASSED
+	[0x36]	=	{ "ROL", "Zero Page,X",		op_rol,		mode_zero_page_x,	1 }, // PASSED
+	[0x2E]	=	{ "ROL", "Absolute",		op_rol,		mode_absolute,		1 }, // PASSED
+	[0x3E]	=	{ "ROL", "Absolute,X",		op_rol,		mode_absolute_x,	1 }, // PASSED
+	[0x6A]	=	{ "ROR", "Implied",		op_ror_accum,	mode_implied,		1 }, // PASSED
+	[0x66]	=	{ "ROR", "Zero Page",		op_ror,		mode_zero_page,		1 }, // PASSED
+	[0x76]	=	{ "ROR", "Zero Page,X",		op_ror,		mode_zero_page_x,	1 }, // PASSED
+	[0x6E]	=	{ "ROR", "Absolute",		op_ror,		mode_absolute,		1 }, // PASSED
+	[0x7E]	=	{ "ROR", "Absolute,X",		op_ror,		mode_absolute_x,	1 }, // PASSED
+	[0x29]	=	{ "AND", "Immediate",		op_and,		mode_immediate,		0 }, // PASSED
+	[0x25]	=	{ "AND", "Zero Page",		op_and,		mode_zero_page,		0 }, // PASSED
+	[0x35]	=	{ "AND", "Zero Page,X",		op_and,		mode_zero_page_x,	0 }, // PASSED
+	[0x2D]	=	{ "AND", "Absolute",		op_and,		mode_absolute,		0 }, // PASSED
+	[0x3D]	=	{ "AND", "Absolute,X",		op_and,		mode_absolute_x,	0 }, // PASSED
+	[0x39]	=	{ "AND", "Absolute,Y",		op_and,		mode_absolute_y,	0 }, // PASSED
+	[0x21]	=	{ "AND", "(Indirect,X)",	op_and,		mode_indirect_x,	0 }, // PASSED
+	[0x31]	=	{ "AND", "(Indirect),Y",	op_and,		mode_indirect_y,	0 }, // PASSED
+	[0x09]	=	{ "ORA", "Immediate",		op_ora,		mode_immediate,		0 }, // PASSED
+	[0x05]	=	{ "ORA", "Zero Page",		op_ora,		mode_zero_page,		0 }, // PASSED
+	[0x15]	=	{ "ORA", "Zero Page,X",		op_ora,		mode_zero_page_x,	0 }, // PASSED
+	[0x0D]	=	{ "ORA", "Absolute",		op_ora,		mode_absolute,		0 }, // PASSED
+	[0x1D]	=	{ "ORA", "Absolute,X",		op_ora,		mode_absolute_x,	0 }, // PASSED
+	[0x19]	=	{ "ORA", "Absolute,Y",		op_ora,		mode_absolute_y,	0 }, // PASSED
+	[0x01]	=	{ "ORA", "(Indirect,X)",	op_ora,		mode_indirect_x,	0 }, // PASSED
+	[0x11]	=	{ "ORA", "(Indirect),Y",	op_ora,		mode_indirect_y,	0 }, // PASSED
+	[0x49]	=	{ "EOR", "Immediate",		op_eor,		mode_immediate,		0 }, // PASSED
+	[0x45]	=	{ "EOR", "Zero Page",		op_eor,		mode_zero_page,		0 }, // PASSED
+	[0x55]	=	{ "EOR", "Zero Page,X",		op_eor,		mode_zero_page_x,	0 }, // PASSED
+	[0x4D]	=	{ "EOR", "Absolute",		op_eor,		mode_absolute,		0 }, // PASSED
+	[0x5D]	=	{ "EOR", "Absolute,X",		op_eor,		mode_absolute_x,	0 }, // PASSED
+	[0x59]	=	{ "EOR", "Absolute,Y",		op_eor,		mode_absolute_y,	0 }, // PASSED
+	[0x41]	=	{ "EOR", "(Indirect,X)",	op_eor,		mode_indirect_x,	0 }, // PASSED
+	[0x51]	=	{ "EOR", "(Indirect),Y",	op_eor,		mode_indirect_y,	0 }, // PASSED
+	[0x24]	=	{ "BIT", "Zero Page",		op_bit,		mode_zero_page,		0 }, // PASSED
+	[0x2C]	=	{ "BIT", "Absolute",		op_bit,		mode_absolute,		0 }, // PASSED
+	[0xC9]	=	{ "CMP", "Immediate",		op_cmp,		mode_immediate,		0 }, // PASSED
+	[0xC5]	=	{ "CMP", "Zero Page",		op_cmp,		mode_zero_page,		0 }, // PASSED
+	[0xD5]	=	{ "CMP", "Zero Page,X",		op_cmp,		mode_zero_page_x,	0 }, // PASSED
+	[0xCD]	=	{ "CMP", "Absolute",		op_cmp,		mode_absolute,		0 }, // PASSED
+	[0xDD]	=	{ "CMP", "Absolute,X",		op_cmp,		mode_absolute_x,	0 }, // PASSED
+	[0xD9]	=	{ "CMP", "Absolute,Y",		op_cmp,		mode_absolute_y,	0 }, // PASSED
+	[0xC1]	=	{ "CMP", "(Indirect,X)",	op_cmp,		mode_indirect_x,	0 }, // PASSED
+	[0xD1]	=	{ "CMP", "(Indirect),Y",	op_cmp,		mode_indirect_y,	0 }, // PASSED
+	[0xE0]	=	{ "CMX", "Immediate",		op_cpx,		mode_immediate,		0 }, // PASSED
+	[0xE4]	=	{ "CPX", "Zero Page",		op_cpx,		mode_zero_page,		0 }, // PASSED
+	[0xEC]	=	{ "CPX", "Absolute",		op_cpx,		mode_absolute,		0 }, // PASSED
+	[0xC0]	=	{ "CPY", "Immediate",		op_cpy,		mode_immediate,		0 }, // PASSED
+	[0xC4]	=	{ "CPY", "Zero Page",		op_cpy,		mode_zero_page,		0 }, // PASSED
+	[0xCC]	=	{ "CPY", "Absolute",		op_cpy,		mode_absolute,		0 }, // PASSED
+	[0x90]	=	{ "BCC", "Relative",		op_bcc,		mode_relative,		0 }, // PASSED
+	[0xB0]	=	{ "BCS", "Relative",		op_bcs,		mode_relative,		0 }, // PASSED
+	[0xF0]	=	{ "BEQ", "Relative",		op_beq,		mode_relative,		0 }, // PASSED
+	[0xD0]	=	{ "BNE", "Relative",		op_bne,		mode_relative,		0 }, // PASSED
+	[0x10]	=	{ "BPL", "Relative",		op_bpl,		mode_relative,		0 }, // PASSED
+	[0x30]	=	{ "BMI", "Relative",		op_bmi,		mode_relative,		0 }, // PASSED
+	[0x50]	=	{ "BVC", "Relative",		op_bvc,		mode_relative,		0 }, // PASSED
+	[0x70]	=	{ "BVS", "Relative",		op_bvs,		mode_relative,		0 }, // PASSED
+	[0x4C]	=	{ "JMP", "Absolute",		op_jmp,		mode_absolute,		0 }, // PASSED
+	[0x6C]	=	{ "JMP", "(Indirect)",		op_jmp,		mode_indirect,		0 }, // PASSED
+	[0x20]	=	{ "JSR", "Absolute",		op_jsr,		mode_relative,		0 }, //	PASSED	Addressing Mode Absolute Hardcoded into the op_jsr.
+	[0x60]	=	{ "RTS", "Implied",		op_rts,		mode_implied,		0 }, // PASSED
+	[0x00]	=	{ "BRK", "Immediate",		op_brk,		mode_immediate,		0 }, // PASSED
+	[0x40]	=	{ "RTI", "Implied",		op_rti,		mode_implied,		0 }, // PASSED
+	[0x48]	=	{ "PHA", "Implied",		op_pha,		mode_implied,		0 }, // PASSED
+	[0x68]	=	{ "PLA", "Implied",		op_pla,		mode_implied,		0 }, // PASSED
+	[0x08]	=	{ "PHP", "Implied",		op_php,		mode_implied,		0 }, // PASSED
+	[0x28]	=	{ "PLP", "Implied",		op_plp,		mode_implied,		0 }, // PASSED
+	[0x18]	=	{ "CLC", "Implied",		op_clc,		mode_implied,		0 }, // PASSED
+	[0x38]	=	{ "SEC", "Implied",		op_sec,		mode_implied,		0 }, // PASSED
+	[0x58]	=	{ "CLI", "Implied",		op_cli,		mode_implied,		0 }, // PASSED
+	[0x78]	=	{ "SEI", "Implied",		op_sei,		mode_implied,		0 }, // PASSED
+	[0xD8]	=	{ "CLD", "Implied",		op_cld,		mode_implied,		0 }, // PASSED
+	[0xF8]	=	{ "SED", "Implied",		op_sed,		mode_implied,		0 }, // PASSES
+	[0xB8]	=	{ "CLV", "Implied",		op_clv,		mode_implied,		0 }, // PASSED
+	[0xEA]	=	{ "NOP", "Implied",		op_nop,		mode_implied,		0 }, // PASSED
 };
 
 
@@ -1062,7 +1065,27 @@ static void op_nop(processor_6502 * processor, bits_16 addr)
 
 // >> PUBLIC FUNCTIONS <<
 
-void init_6502(processor_6502 * processor)
+void get_opcode_infos(uint8_t opcode, char **name, char **mode)
+{
+	char *m_name = (char *) malloc( 256 );
+	char *m_mode = (char *) malloc( 256 );
+	uint8_t i = 0;
+
+	for (; op_table[opcode].op_name[i] != '\0'; i++ )
+		m_name[i] = op_table[opcode].op_name[i];
+	m_name[i] = '\0';
+	
+	i = 0;
+
+	for (; op_table[opcode].mode_name[i] != '\0'; i++ )
+		m_mode[i] = op_table[opcode].mode_name[i];
+	m_mode[i] = '\0';
+
+	*name = m_name;
+	*mode = m_mode;
+}
+
+void init_6502(processor_6502 * processor, uint16_t start_pc_addr)
 {	
 	processor->reg_a  	= 0x00;
 	processor->reg_x  	= 0x00;
@@ -1070,7 +1093,7 @@ void init_6502(processor_6502 * processor)
 	processor->reg_sp 	= 0xFD;
 	processor->reg_p 	= 0x24;
 	processor->read_write	= 0x00;
-	processor->reg_pc 	= 0x8000;
+	processor->reg_pc 	= start_pc_addr;
 	processor->cycles 	= 0x00;
 }
 
@@ -1078,15 +1101,24 @@ void execute_opcode(processor_6502 * processor, memory_16 * memory)
 {	
 	bits_8 opcode = processor_read(processor, processor->reg_pc++);
 	opcode_entry execute = op_table[opcode];
-
+	
+	// It's crashing when an UNDEFINED OPCODE is accessed
 	if (execute.op == NULL) {
 		printf("UNDEFINED OPCODE...\n");
 		return;
 	}
-//	printf("Executing %s\n", execute.op_name);
+
+	#ifdef DEBUG
+	if ( (processor->cycles % 0x100000) == 0 ) {
+		printf(">> Executing %s | PC:%02x  ", execute.op_name, processor->reg_pc - 1);
+		fflush(stdout);
+		printf("A:%02x  X:%02x  Y:%02x  P:%02x  Cycles:%016lx\n", processor->reg_a, processor->reg_x, processor->reg_y, processor->reg_p, processor->cycles);
+		fflush(stdout);
+	}
+	#endif
+
 	bits_16 address = execute.mode(processor, execute.force_oops);
 	execute.op(processor, address);
-//	printf(">> A:%02x  X:%02x  Y:%02x  P:%02x  Cycles: %016lx\n", processor->reg_a, processor->reg_x, processor->reg_y, processor->reg_p, processor->cycles);
 	UNUSED(memory);
 }
 

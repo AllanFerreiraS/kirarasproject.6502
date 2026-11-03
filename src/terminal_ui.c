@@ -5,6 +5,11 @@
 #define ESC			'\x1B'
 #define MOVE_POS_HOME		'H'
 
+
+/*
+ * For more info, visit https://gist.github.com/fnky/458719343aabd01cfb17a3a4f7296797
+ */
+
 void tui_move_cursor(int step, char command)
 {
 	printf("%c[%d%c", ESC, step, command);

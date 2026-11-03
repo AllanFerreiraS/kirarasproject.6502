@@ -6,6 +6,8 @@ SRC = \
 	../../emulators/raw/raw.c \
 	../../src/hardwares/processor_6502.c \
 	../../src/hardwares/memory_16.c \
+	../../src/debugger.c \
+	../../src/terminal_ui.c \
 	../../thirdparty/cJson/cJSON.c
 
 OUT = ./run_singlesteptests

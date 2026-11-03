@@ -14,7 +14,13 @@
 #define COLOR_BACK_GREEN	"42"
 #define COLOR_BACK_BLUE		"44"
 
+#define COLOR_FORE_GREEN	"32"
+
 #define ERASE_ENTIRE_SCREEN	"2J"
+
+/*
+ * For more info, visit: https://gist.github.com/fnky/458719343aabd01cfb17a3a4f7296797
+ */
 
 // Public Functions
 

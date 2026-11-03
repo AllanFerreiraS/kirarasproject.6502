@@ -1,6 +1,9 @@
 #include "./../../include/hardwares/memory_16.h"
 #include <stdio.h>
 
+#define TRUE	1
+#define	FALSE	0
+
 uint8_t memory_read(memory_16 * memory, uint16_t address)
 {
 	return memory->data[address];
@@ -12,14 +15,15 @@ void memory_write(memory_16 * memory, uint16_t address, uint8_t data)
 	memory->data[address] = data;
 }
 
-void write_rom(memory_16 * memory, const char *rom_bin)
+uint8_t write_rom(memory_16 * memory, const char *rom_bin, uint16_t addr_start)
 {
 
 	FILE *file = fopen(rom_bin, "rb");
 	if (file == NULL)
-		printf("Errore\n");
-	fread(&(memory->data[0x8000]), 1, MEMORY_16_SIZE - 0x8000, file);
+		return FALSE;
+	fread(&(memory->data[addr_start]), 1, MEMORY_16_SIZE - addr_start, file);
 	fclose(file);
+	return TRUE;
 }
 
 void print_zero_page(memory_16 * memory)
