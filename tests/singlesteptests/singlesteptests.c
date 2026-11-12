@@ -402,7 +402,7 @@ static uint8_t init_test(processor_6502 * p_cpu, processor_6502 * p_expected, me
 			return FALSE;
 		}
 
-		execute_opcode(p_cpu, m_mem);
+		processor_6502_execute_opcode(p_cpu);
 
 		if (! compare_processor(p_cpu, p_expected, &error_message) ) {
 			feedbacks[counter.failed].test_name = test_name;
@@ -612,6 +612,9 @@ int main (int argc, char *argv[])
 
 	emu.cpu.bus		= (buses) { bus_raw_read, bus_raw_write, &emu };
 	emu_expected.cpu.bus	= (buses) { bus_raw_read, bus_raw_write, &emu_expected };
+
+	processor_6502_manual_initialization(&(emu.cpu), 0x0000);
+	processor_6502_manual_initialization(&(emu_expected.cpu), 0x0000);
 
 	if ( strcmp(argv[1], "all") == 0 ) {
 		if (! all_files_test(&emu, &emu_expected) ) {

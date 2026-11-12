@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -g -fsanitize=address -Iprocessor
+CFLAGS = -DDEBUG_SINGLESTEPTESTS -Wall -Wextra -g -fsanitize=address -Iprocessor
 
 SRC = \
 	./singlesteptests.c \

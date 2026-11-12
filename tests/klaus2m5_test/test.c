@@ -8,7 +8,7 @@
 
 #define PC_ADDR		0x0400
 #define MEM_ADDR	0x0000
-#define KLAUS_BIN	"6502_functional_test.bin"
+#define KLAUS_BIN	"6502_interrupt_test"
 
 int main ()
 {
@@ -27,19 +27,29 @@ int main ()
 	}
 
 	emu.cpu.bus = (buses) { bus_raw_read, bus_raw_write, &emu  };
-	init_6502(&(emu.cpu), PC_ADDR);
-
+	processor_6502_manual_initialization(&(emu.cpu), PC_ADDR);
+	
 	uint16_t previous_opcode = 0;
 	uint64_t counter = 0;
-	
+	char	 stop_flag;
+
+	debugger_terminal_prepare();
 	while (1) {
 		previous_opcode = emu.cpu.reg_pc;
-		execute_opcode(&(emu.cpu), &(emu.memory));
+		processor_6502_execute_opcode(&(emu.cpu));
+		debugger_run(&(emu.memory), &(emu.cpu));
+		fflush(stdout);
 		counter++;
+		
+		scanf("%c", &stop_flag);
+		if (stop_flag == 'q')
+			break;
+
 		if (previous_opcode == emu.cpu.reg_pc)
 			break;
 	}
-	
+	debugger_terminal_finish();
+
 	printf("Klaus2m5 6502 Functional Test\n");
 	printf("-----------------------------\n");
 	printf("Instructions executed:\t %ld\n", counter);
@@ -52,8 +62,9 @@ int main ()
                 printf("\t\t\t success         ;if you get here everything went well\n");
 		printf("3469 : 4c6934\t >       jmp *           ;test passed, no errors\n");
 	}
-	else
+	else {
 		printf(">> FAILED\n");
+	}
 
 	return 0;
 }

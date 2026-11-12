@@ -6,12 +6,10 @@ LD65 = ld65
 
 
 SRC = \
-	./test.c \
+	./disassemble_test.c \
 	./../../src/hardwares/processor_6502.c \
 	./../../src/hardwares/memory_16.c \
-	./../../src/debugger.c \
-	./../../src/terminal_ui.c \
-	./../../emulators/raw/raw.c
+	./../../src/disassemble.c
 
 OUT = ./run_test
 

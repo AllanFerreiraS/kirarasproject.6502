@@ -2,23 +2,39 @@
 #include "./../../include/buses.h"
 #include "./../../include/hardwares/memory_16.h"
 #include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
 
-#define UNUSED(x)	(void)(x)
-//#define DEBUG
+// Status Pointer Flags
+#define FLAG_NEG		0x80		// Negative
+#define FLAG_OVF		0x40		// Overflow
+#define FLAG_NOEFFECT		0x20		// Literally no effect on the processor
+#define FLAG_BRK		0x10		// Break
+#define FLAG_DEC		0x08		// Decimal
+#define FLAG_INT		0x04		// Interrupt
+#define FLAG_ZER		0x02		// Zero
+#define FLAG_CAR		0x01		// Carry
+#define FLAG_INITIAL_STATE	0x24		// Only NOEFFECT and INT flags are set
 
-#define ADDR_BRK	0xFFFE
-#define ADDR_STK	0x100
+// Interrupts Addresses
+#define INTERRUPT_IRQ_LW_ADDR	0xFFFE		// IRQ/BRK Interrupt
+#define INTERRUPT_NMI_LW_ADDR	0xFFFA		// NMI Interrupt
+#define INTERRUPT_RESET_LW_ADDR	0xFFFC		// RESET Interrupt
+#define IRQ_LOW_VALUE		0
+#define IRQ_HIGH_VALUE		1
+#define NMI_LOW_VALUE		0
+#define NMI_HIGH_VALUE		1
 
-#define NUM_OPCODES	0x100
-#define FLAG_NEG	0x80
-#define FLAG_OVF	0x40
-#define FLAG_NOEFFECT	0x20
-#define FLAG_BRK	0x10
-#define FLAG_DEC	0x08
-#define FLAG_INT	0x04
-#define FLAG_ZER	0x02
-#define FLAG_CAR	0x01
+// Stack Pointer Start Index
+#define ADDR_STK		0x100
+
+// Others
+#define NUM_OPCODES		0x100		// Total amount of OPCODES
+#define UNUSED(x)		(void)(x)	// Unused variables
+#define TRUE			1
+#define FALSE			0
+
+
 
 
 // Function Pointers to handle Addressing Modes and Opcodes.
@@ -39,18 +55,18 @@ static bits_8	processor_read(processor_6502 * processor, uint16_t address);
 static void	processor_write(processor_6502 * processor, uint16_t address, uint8_t data);
 
 // Addressing Mode Functions
-static bits_16 mode_immediate(processor_6502 * processor, bits_8 force_oops);
-static bits_16 mode_zero_page(processor_6502 * processor, bits_8 force_oops);
-static bits_16 mode_zero_page_x(processor_6502 * processor, bits_8 force_oops);
-static bits_16 mode_zero_page_y(processor_6502 * processor, bits_8 force_oops);
-static bits_16 mode_absolute(processor_6502 * processor, bits_8 force_oops);
-static bits_16 mode_absolute_x(processor_6502 * processor, bits_8 force_oops);
-static bits_16 mode_absolute_y(processor_6502 * processor, bits_8 force_oops);
-static bits_16 mode_indirect(processor_6502 * processor, bits_8 force_oops);
-static bits_16 mode_indirect_x(processor_6502 * processor, bits_8 force_oops);
-static bits_16 mode_indirect_y(processor_6502 * processor, bits_8 force_oops);
-static bits_16 mode_implied(processor_6502 * processor, bits_8 force_oops);
-static bits_16 mode_relative(processor_6502 * processor, bits_8 force_oops);
+static bits_16 mode_immediate(processor_6502 * processor, bits_8 force_oops);	// MODE 00
+static bits_16 mode_zero_page(processor_6502 * processor, bits_8 force_oops);	// MODE 01
+static bits_16 mode_zero_page_x(processor_6502 * processor, bits_8 force_oops); // MODE 02
+static bits_16 mode_zero_page_y(processor_6502 * processor, bits_8 force_oops);	// MODE 03
+static bits_16 mode_absolute(processor_6502 * processor, bits_8 force_oops);	// MODE 04
+static bits_16 mode_absolute_x(processor_6502 * processor, bits_8 force_oops);	// MODE 05
+static bits_16 mode_absolute_y(processor_6502 * processor, bits_8 force_oops);	// MODE 06
+static bits_16 mode_indirect(processor_6502 * processor, bits_8 force_oops);	// MODE 07
+static bits_16 mode_indirect_x(processor_6502 * processor, bits_8 force_oops);	// MODE 08
+static bits_16 mode_indirect_y(processor_6502 * processor, bits_8 force_oops);	// MODE 09
+static bits_16 mode_implied(processor_6502 * processor, bits_8 force_oops);	// MODE 10
+static bits_16 mode_relative(processor_6502 * processor, bits_8 force_oops);	// MODE 11
 
 // OPCODE Functions
 // Access:
@@ -131,15 +147,19 @@ static void set_flag(processor_6502 * processor, bits_8 flag_mask, int condition
 static void set_nz(processor_6502 * processor, bits_8 data);
 
 // Stack Management
-static void stack_push(processor_6502 * processor, uint8_t data);
-static uint8_t stack_pull(processor_6502 * processor);
-static uint8_t stack_read(processor_6502 * processor, uint8_t stack);
+static void 	stack_push(processor_6502 * processor, uint8_t data);
+static uint8_t 	stack_pull(processor_6502 * processor);
+static uint8_t 	stack_read(processor_6502 * processor, uint8_t stack);
 
 // Others
-static uint16_t little_endian_solver(uint16_t low, uint16_t high, uint8_t add, uint16_t *carry);
-static uint8_t oops(uint8_t force_oops, uint8_t condition);
+static uint16_t	little_endian_solver(uint16_t low, uint16_t high, uint8_t add, uint16_t *carry);
+static uint8_t 	oops(uint8_t force_oops, uint8_t condition);
+static void	nmi_request_store_new_value(processor_6502 * processor);
+static void	response_interrupt_request_if_any(processor_6502 * processor);
 
 // Handles (Helpers)
+static void handle_interrupt_irq_nmi(processor_6502 * processor, uint16_t interrupt_lw_addr, uint8_t brk_triggered);
+//static void handle_interrupt_reset(processor_6502 * processor, uint8_t is_power_up);
 static void handle_op_adc_decimal_mode(processor_6502 * p, uint8_t data);
 static void handle_op_adc_binary_mode(processor_6502 * p, uint8_t data);
 static void handle_op_sbc_decimal_mode(processor_6502 * p, uint8_t data);
@@ -166,7 +186,7 @@ static const opcode_entry op_table[NUM_OPCODES] = {
 	[0xBE]	=	{ "LDX", "Absolute,Y",		op_ldx, 	mode_absolute_y,	0 }, // PASSED
 	[0xA0]	=	{ "LDY", "Immediate",		op_ldy, 	mode_immediate,		0 }, // PASSED
 	[0xA4]	=	{ "LDY", "Zero Page",		op_ldy, 	mode_zero_page,		0 }, // PASSED
-	[0xB4]	=	{ "LDY", "Zero, Page,X",	op_ldy, 	mode_zero_page_x, 	0 }, // PASSED
+	[0xB4]	=	{ "LDY", "Zero Page,X",		op_ldy, 	mode_zero_page_x, 	0 }, // PASSED
 	[0xAC]	=	{ "LDY", "Absolute",		op_ldy, 	mode_absolute,		0 }, // PASSED
 	[0xBC]	=	{ "LDY", "Absolute,X",		op_ldy, 	mode_absolute_x,	0 }, // PASSED
 	[0x85]	=	{ "STA", "Zero Page",		op_sta, 	mode_zero_page,		1 }, // PASSED
@@ -270,7 +290,7 @@ static const opcode_entry op_table[NUM_OPCODES] = {
 	[0xD9]	=	{ "CMP", "Absolute,Y",		op_cmp,		mode_absolute_y,	0 }, // PASSED
 	[0xC1]	=	{ "CMP", "(Indirect,X)",	op_cmp,		mode_indirect_x,	0 }, // PASSED
 	[0xD1]	=	{ "CMP", "(Indirect),Y",	op_cmp,		mode_indirect_y,	0 }, // PASSED
-	[0xE0]	=	{ "CMX", "Immediate",		op_cpx,		mode_immediate,		0 }, // PASSED
+	[0xE0]	=	{ "CPX", "Immediate",		op_cpx,		mode_immediate,		0 }, // PASSED
 	[0xE4]	=	{ "CPX", "Zero Page",		op_cpx,		mode_zero_page,		0 }, // PASSED
 	[0xEC]	=	{ "CPX", "Absolute",		op_cpx,		mode_absolute,		0 }, // PASSED
 	[0xC0]	=	{ "CPY", "Immediate",		op_cpy,		mode_immediate,		0 }, // PASSED
@@ -306,16 +326,7 @@ static const opcode_entry op_table[NUM_OPCODES] = {
 
 
 
-// >> BUS <<
 
-static bits_8 processor_read(processor_6502 * processor, uint16_t address)
-{
-	return processor->bus.read_fn((void *) processor->bus.infra, address);
-}
-static void processor_write(processor_6502 * processor, uint16_t address, uint8_t data)
-{
-	processor->bus.write_fn((void *) processor->bus.infra, address, data);
-}
 
 
 // >> OTHERS <<
@@ -330,6 +341,52 @@ static uint8_t oops(uint8_t force_oops, uint8_t condition)
 {
 	return (uint8_t)(force_oops || condition);
 }
+
+static void nmi_request_store_new_value(processor_6502 * processor)
+{
+	if ( (processor->nmi_previous == NMI_HIGH_VALUE) && (processor->nmi_pin == NMI_LOW_VALUE) )
+		processor->nmi_request = 1;
+
+	processor->nmi_previous = processor->nmi_pin;
+}
+
+static void response_interrupt_request_if_any(processor_6502 * processor)
+{
+	if (processor->nmi_request) {
+		printf("NMI\n");
+		handle_interrupt_irq_nmi(processor, INTERRUPT_NMI_LW_ADDR, 0);
+		processor->nmi_request = 0;
+	}
+	
+	if ( (processor->irq_pin == IRQ_LOW_VALUE) && ((processor->reg_p & FLAG_INT) == 0) ) {
+		printf("IRQ\n");
+		handle_interrupt_irq_nmi(processor, INTERRUPT_IRQ_LW_ADDR, 0);
+		//processor->irq_pin = IRQ_HIGH_VALUE;
+	}
+}
+
+
+
+
+
+
+// >> BUS <<
+
+static bits_8 processor_read(processor_6502 * processor, uint16_t address)
+{
+	uint8_t data = processor->bus.read_fn((void *) processor->bus.infra, address);
+	nmi_request_store_new_value(processor);
+	return data;
+}
+static void processor_write(processor_6502 * processor, uint16_t address, uint8_t data)
+{
+	processor->bus.write_fn((void *) processor->bus.infra, address, data);
+	nmi_request_store_new_value(processor);
+}
+
+
+
+
 
 
 // >> FLAGS <<
@@ -347,6 +404,10 @@ static void set_nz(processor_6502 * processor, bits_8 data)
 	set_flag(processor, FLAG_ZER, (data == 0));
 	set_flag(processor, FLAG_NEG, ((data & FLAG_NEG) > 0));
 }
+
+
+
+
 
 
 // >> STACKS <<
@@ -507,8 +568,6 @@ static bits_16 mode_relative(processor_6502 * processor, bits_8 force_oops)
 
 
 
-
-
 // >> HANDLE FUNCTIONS <<
 
 static void handle_op_adc_decimal_mode(processor_6502 * p, uint8_t data)
@@ -581,6 +640,31 @@ static void handle_op_sbc_binary_mode(processor_6502 * p, uint8_t data)
 	set_flag(p, FLAG_ZER, (p->reg_a & 0xFF) == 0);
 	set_flag(p, FLAG_OVF, (r ^ old_a) & (r ^ (~(uint16_t)data)) & 0x0080);
 	set_flag(p, FLAG_NEG, (p->reg_a & FLAG_NEG) > 0);
+}
+
+static void handle_interrupt_irq_nmi(processor_6502 * processor, uint16_t interrupt_lw_addr, uint8_t brk_triggered)
+{
+	if (brk_triggered && (interrupt_lw_addr == INTERRUPT_IRQ_LW_ADDR)) {
+		(void) processor_read(processor, ((uint16_t)(processor->reg_pc - 1) & 0xFFFF));	//Force another read
+		set_flag(processor, FLAG_BRK, 1);						// Just for the stack
+	} else {
+		(void) processor_read(processor, processor->reg_pc);				// Force an OPCODE read
+		(void) processor_read(processor, processor->reg_pc + 1);			// Force another read
+		set_flag(processor, FLAG_BRK, 0);
+	}
+
+	bits_8	high_pc		= (uint8_t)((processor->reg_pc & 0xFF00) >> 8);
+	bits_8	low_pc		= (uint8_t)(processor->reg_pc & 0x00FF);
+	stack_push(processor, high_pc);
+	stack_push(processor, low_pc);
+	stack_push(processor, processor->reg_p);
+	set_flag(processor, FLAG_BRK, 0);					// Make break flag unset
+	set_flag(processor, FLAG_INT, 1);					// Set Interrupt Disabled
+	bits_16	low_addr	= processor_read(processor, interrupt_lw_addr);
+	bits_16 high_addr	= processor_read(processor, (interrupt_lw_addr + 1) & 0xFFFF);
+	bits_16 carry		= 0;
+	processor->reg_pc	= little_endian_solver(low_addr, high_addr, 0, &carry);
+
 }
 
 static void handle_branch(processor_6502 * processor, uint16_t addr, uint8_t condition)
@@ -955,19 +1039,8 @@ static void op_rts(processor_6502 * processor, bits_16 addr)
 
 static void op_brk(processor_6502 * processor, bits_16 addr)
 {
-	(void) processor_read(processor, addr);
-	bits_8	high_pc		= (uint8_t)((processor->reg_pc & 0xFF00) >> 8);
-	bits_8	low_pc		= (uint8_t)(processor->reg_pc & 0x00FF);
-	stack_push(processor, high_pc);
-	stack_push(processor, low_pc);
-	set_flag(processor, FLAG_BRK, 1); 			// Just for Stacking
-	stack_push(processor, processor->reg_p);
-	set_flag(processor, FLAG_BRK, 0);			// Make break flag unset
-	set_flag(processor, FLAG_INT, 1);
-	bits_16	low_addr	= processor_read(processor, ADDR_BRK);
-	bits_16 high_addr	= processor_read(processor, ADDR_BRK + 1);
-	bits_16 carry		= 0;
-	processor->reg_pc	= little_endian_solver(low_addr, high_addr, 0, &carry);
+	handle_interrupt_irq_nmi(processor, INTERRUPT_IRQ_LW_ADDR, 1);
+	UNUSED(addr);
 }
 
 static void op_rti(processor_6502 * processor, bits_16 addr)
@@ -1065,39 +1138,8 @@ static void op_nop(processor_6502 * processor, bits_16 addr)
 
 // >> PUBLIC FUNCTIONS <<
 
-void get_opcode_infos(uint8_t opcode, char **name, char **mode)
-{
-	char *m_name = (char *) malloc( 256 );
-	char *m_mode = (char *) malloc( 256 );
-	uint8_t i = 0;
 
-	for (; op_table[opcode].op_name[i] != '\0'; i++ )
-		m_name[i] = op_table[opcode].op_name[i];
-	m_name[i] = '\0';
-	
-	i = 0;
-
-	for (; op_table[opcode].mode_name[i] != '\0'; i++ )
-		m_mode[i] = op_table[opcode].mode_name[i];
-	m_mode[i] = '\0';
-
-	*name = m_name;
-	*mode = m_mode;
-}
-
-void init_6502(processor_6502 * processor, uint16_t start_pc_addr)
-{	
-	processor->reg_a  	= 0x00;
-	processor->reg_x  	= 0x00;
-	processor->reg_y  	= 0x00;
-	processor->reg_sp 	= 0xFD;
-	processor->reg_p 	= 0x24;
-	processor->read_write	= 0x00;
-	processor->reg_pc 	= start_pc_addr;
-	processor->cycles 	= 0x00;
-}
-
-void execute_opcode(processor_6502 * processor, memory_16 * memory)
+void execute_opcode(processor_6502 * processor)
 {	
 	bits_8 opcode = processor_read(processor, processor->reg_pc++);
 	opcode_entry execute = op_table[opcode];
@@ -1107,18 +1149,124 @@ void execute_opcode(processor_6502 * processor, memory_16 * memory)
 		printf("UNDEFINED OPCODE...\n");
 		return;
 	}
-
-	#ifdef DEBUG
-	if ( (processor->cycles % 0x100000) == 0 ) {
-		printf(">> Executing %s | PC:%02x  ", execute.op_name, processor->reg_pc - 1);
-		fflush(stdout);
-		printf("A:%02x  X:%02x  Y:%02x  P:%02x  Cycles:%016lx\n", processor->reg_a, processor->reg_x, processor->reg_y, processor->reg_p, processor->cycles);
-		fflush(stdout);
-	}
-	#endif
-
+	printf("OPCODE: %s\n", execute.op_name);
 	bits_16 address = execute.mode(processor, execute.force_oops);
 	execute.op(processor, address);
-	UNUSED(memory);
 }
+
+
+
+uint8_t processor_6502_get_opcode_infos(uint8_t opcode, char **name, char **mode, uint8_t *mode_code)
+{
+	char *m_name = (char *) malloc( 256 );
+	char *m_mode = (char *) malloc( 256 );
+	uint8_t i = 0;
+	uint8_t return_status = TRUE;
+
+	if (op_table[opcode].op_name != NULL) {
+		
+		// Get OPCODE Name
+		for (; op_table[opcode].op_name[i] != '\0'; i++ )
+			m_name[i] = op_table[opcode].op_name[i];
+		m_name[i] = '\0';
+	
+		i = 0;
+	
+		// Get ADDR MODE name
+		for (; op_table[opcode].mode_name[i] != '\0'; i++ )
+			m_mode[i] = op_table[opcode].mode_name[i];
+		m_mode[i] = '\0';
+
+		if (op_table[opcode].mode == mode_immediate)
+			*mode_code = PROCESSOR_6502_ADDR_MODE_IMMEDIATE_CODE;
+		else if (op_table[opcode].mode == mode_zero_page)
+			*mode_code = PROCESSOR_6502_ADDR_MODE_ZERO_PAGE_CODE;
+		else if (op_table[opcode].mode == mode_zero_page_x)
+			*mode_code = PROCESSOR_6502_ADDR_MODE_ZERO_PAGE_X_CODE;
+		else if (op_table[opcode].mode == mode_zero_page_y)
+			*mode_code = PROCESSOR_6502_ADDR_MODE_ZERO_PAGE_Y_CODE;
+		else if (op_table[opcode].mode == mode_absolute)
+			*mode_code = PROCESSOR_6502_ADDR_MODE_ABSOLUTE_CODE;
+		else if (op_table[opcode].mode == mode_absolute_x)
+			*mode_code = PROCESSOR_6502_ADDR_MODE_ABSOLUTE_X_CODE;
+		else if (op_table[opcode].mode == mode_absolute_y)
+			*mode_code = PROCESSOR_6502_ADDR_MODE_ABSOLUTE_Y_CODE;
+		else if (op_table[opcode].mode == mode_indirect)
+			*mode_code = PROCESSOR_6502_ADDR_MODE_INDIRECT_CODE;
+		else if (op_table[opcode].mode == mode_indirect_x)
+			*mode_code = PROCESSOR_6502_ADDR_MODE_INDIRECT_X_CODE;
+		else if (op_table[opcode].mode == mode_indirect_y)
+			*mode_code = PROCESSOR_6502_ADDR_MODE_INDIRECT_Y_CODE;
+		else if (op_table[opcode].mode == mode_implied)
+			*mode_code = PROCESSOR_6502_ADDR_MODE_IMPLIED_CODE;
+		else if (op_table[opcode].mode == mode_relative)
+			*mode_code = PROCESSOR_6502_ADDR_MODE_RELATIVE_CODE;
+		else
+			*mode_code = PROCESSOR_6502_ADDR_MODE_ERROR_CODE;
+	} else {
+		strcpy(m_name, "UNKOWN_OPCODE");
+		strcpy(m_mode, "UNKOWN_ADDR_MODE");
+		*mode_code = PROCESSOR_6502_ADDR_MODE_ERROR_CODE;
+		return_status = FALSE;
+	}
+
+	*name = m_name;
+	*mode = m_mode;
+	return return_status;
+}
+
+void processor_6502_manual_initialization(processor_6502 * processor, uint16_t start_pc_addr)
+{	
+	processor->reg_a	= 0x00;
+	processor->reg_x	= 0x00;
+	processor->reg_y	= 0x00;
+	processor->reg_sp	= 0x00;
+	processor->reg_p	= FLAG_INITIAL_STATE;
+	processor->read_write	= 0x00;
+	processor->reg_pc	= start_pc_addr;
+
+	processor->irq_pin	= IRQ_HIGH_VALUE;
+	processor->nmi_pin	= NMI_HIGH_VALUE;
+	processor->nmi_previous = NMI_HIGH_VALUE;
+	processor->nmi_request	= 0;
+	processor->cycles	= 0x00;
+
+}
+
+void processor_6502_initialization(processor_6502 * processor, uint8_t is_power_up)
+{
+	if (is_power_up) {
+		processor->reg_a	= 0x00;
+		processor->reg_x	= 0x00;
+		processor->reg_y	= 0x00;
+		processor->reg_sp	= 0x00;
+		processor->reg_p	= 0x00;
+		processor->read_write	= 0x00;
+
+		processor->irq_pin	= IRQ_HIGH_VALUE;
+		processor->nmi_pin	= NMI_HIGH_VALUE;
+		processor->nmi_previous = NMI_HIGH_VALUE;
+		processor->nmi_request	= 0;
+		processor->cycles	= 0x00;
+	}
+
+	set_flag(processor, FLAG_NOEFFECT, 1);
+	set_flag(processor, FLAG_INT, 1);	
+	(void) processor_read(processor, processor->reg_pc & 0xFFFF);				// Cycle 1
+	(void) processor_read(processor, (processor->reg_pc + 1) & 0xFFFF);			// Cycle 2
+	(void) stack_read(processor, (processor->reg_sp--) & 0xFF);				// Cycle 3
+	(void) stack_read(processor, (processor->reg_sp--) & 0xFF);				// Cycle 4
+	(void) stack_read(processor, (processor->reg_sp--) & 0xFF);				// Cycle 5
+	uint16_t low_pc = processor_read(processor, INTERRUPT_RESET_LW_ADDR);			// Cycle 6
+	uint16_t high_pc = processor_read(processor, (INTERRUPT_RESET_LW_ADDR + 1) & 0xFFFF);	// Cycle 7
+	uint16_t carry = 0;
+	processor->reg_pc = little_endian_solver(low_pc, high_pc, 0, &carry);
+}
+
+void processor_6502_execute_opcode(processor_6502 * processor)
+{
+	execute_opcode(processor);
+	response_interrupt_request_if_any(processor);
+}
+
 

@@ -1,101 +1,47 @@
-.setcpu "6502"
-
-.segment "ZEROPAGE"
-
-counter:    .res 1
-result:     .res 1
-temp:       .res 1
-loop_count: .res 1
-
 .segment "CODE"
 
-.org $8000
+RESET:
+    SEI             ; Disable IRQs initially
 
-reset:
-	; Initialize registers
-    	LDA #$00
-	LDX #$05
-	LDY #$03
+    LDX #$FF
+    TXS             ; Initialize stack pointer
 
-    	STA counter
-	STX result
-	STY temp
+    LDA #$00
+    STA $0200       ; IRQ counter = 0
+    STA $0201       ; Main program counter marker = 0
 
-	; Test arithmetic
-	LDA #$10
-	CLC
-	ADC #$05
-	STA result           ; result = $15
+    CLI             ; Enable IRQs
 
-	; Test subtraction
-	SEC
-	SBC #$03
-	STA temp             ; temp = $12
+MAIN:
+    INC $0201       ; Increment main program counter marker
 
-	; Test logical operations
-	LDA #$F0
-	AND #$0F
-	STA counter          ; counter = $00
+    LDX $0201	    ; Load Main program counter to X
 
-	LDA #$F0
-	ORA #$0F
-	STA counter          ; counter = $FF
+    JMP MAIN
 
-	LDA #$AA
-	EOR #$FF
-	STA temp             ; temp = $55
 
-	; Test shifts
-	LDA #$01
-	ASL A                ; A = $02
-	ASL A                ; A = $04
-	LSR A                ; A = $02
-	STA counter
+; ==========================================
+; IRQ HANDLER
+; ==========================================
 
-	; Test increment/decrement
-	INC counter          ; $03
-	DEC counter          ; $02
+IRQ:
+    PHA             ; Save accumulator
 
-	INX                  ; X = $06
-	DEX                  ; X = $05
-	INY                  ; Y = $04
-	DEY                  ; Y = $03
+    INC $0200       ; Increment IRQ counter
+    
+    LDY $0200	    ; Load IRQ counter to Y
 
-	; Test stack operations
-	LDA #$42
-	PHA
+    PLA             ; Restore accumulator
 
-	LDA #$00
-	PLA                  ; A = $42
-	STA result
+    RTI             ; Return from interrupt
 
-	; Test subroutine
-	JSR calculate
 
-	; Test loop and branch
-	LDX #$05
+; ==========================================
+; INTERRUPT VECTORS
+; ==========================================
 
-loop:
-	DEX
-	BNE loop
+.segment "VECTORS"
 
-	; Final values
-	LDA #$AA
-	STA $10
-
-	LDA #$BB
-	STA $11
-
-	LDA #$CC
-	STA $12
-
-	JMP forever
-
-calculate:
-	LDA #$20
-	CLC
-	ADC #$22
-	RTS                  ; A = $42
-
-forever:
-	JMP forever
+.word $0000         ; NMI
+.word RESET         ; RESET
+.word IRQ           ; IRQ / BRK

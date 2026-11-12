@@ -1,0 +1,35 @@
+
+Storing a ROM:
+	- GET the PRG size in the nes HEADER.
+	- ALLOCATE memory to the ROM using the size.
+	- STORE the ROM in the allocated array using the
+		specifications of the MAPPER.
+	- ...
+
+
+DISASSEMBLE:
+	INFRASTRUCTURE:
+	>>
+	  	- STRUCT { arr_str, size }
+		- FUNCTION to DISASSEMBLE and store the data in arr_str.
+			Param:	*struct, *rom, rom_size.
+			Return:	BOOL.
+	<<
+	IDEA:
+	- POINT to the stored ROM.
+	- GET ROM size.
+	- CALL the DISASSEMBLE function to READ the ROM.
+	- ALLOCATE memory to STORE the strings using the size.
+	>>
+	  Use the MAPPER to understand the start addr of each
+	  bank of the ROM. The Addr printed in the disassemble,
+	  (ex: $FFFF), depend on the MAPPER configuration. But,
+	  the idea is to use the MAPPER and the processor->pc
+	  to know what command the processor is executing,
+	  because the ROM addr and processor->pc can be not the
+	  same.
+	<<
+	>>
+	  The DISASSEMBLE function will store the result in the
+	  string array.
+	<<

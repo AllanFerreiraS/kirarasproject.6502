@@ -1,0 +1,255 @@
+ca65 V2.19 - Git 2ea1df8b2
+Main file   : disasm_test.s
+Current file: disasm_test.s
+
+000000r 1               ; ============================================================================
+000000r 1               ; disasm_test.s - one instance of every legal NMOS 6502 opcode (151 opcodes)
+000000r 1               ;
+000000r 1               ; Purpose : feed a disassembler. The source line you read here is the text
+000000r 1               ;           your disassembler should print for those bytes (modulo case and
+000000r 1               ;           branch targets, which a disassembler prints as absolute addresses).
+000000r 1               ; WARNING : this is NOT a program to run. It is decoding material only.
+000000r 1               ;
+000000r 1               ; Build   : ca65 -l disasm_test.lst -o disasm_test.o disasm_test.s
+000000r 1               ;           ld65 -C disasm_test.cfg -o disasm_test.bin disasm_test.o
+000000r 1               ;           (add -D ILLEGAL_BYTES to ca65 to append a few undocumented bytes)
+000000r 1               ;
+000000r 1               ; Operand values are varied on purpose ($00, $01, $7F, $80, $FF, ...) to expose
+000000r 1               ; byte-order and sign bugs. "a:" forces a 16-bit address even when the value
+000000r 1               ; fits in one byte (otherwise ca65 would silently pick the zero page opcode).
+000000r 1               ; ============================================================================
+000000r 1               
+000000r 1                       .setcpu "6502"          ; legal opcodes only: illegal ones are errors
+000000r 1               
+000000r 1                       .segment "CODE"
+000000r 1               
+000000r 1               rom_start:
+000000r 1               
+000000r 1                       ; ---- ADC
+000000r 1  69 00                adc  #$00               ; immediate
+000002r 1  65 00                adc  $00                ; zero page
+000004r 1  75 01                adc  $01,x              ; zero page,X
+000006r 1  6D 34 12             adc  $1234              ; absolute
+000009r 1  7D CD AB             adc  $ABCD,x            ; absolute,X
+00000Cr 1  79 00 02             adc  $0200,y            ; absolute,Y
+00000Fr 1  61 42                adc  ($42,x)            ; (indirect,X)
+000011r 1  71 80                adc  ($80),y            ; (indirect),Y
+000013r 1                       ; ---- AND
+000013r 1  29 01                and  #$01               ; immediate
+000015r 1  25 FF                and  $FF                ; zero page
+000017r 1  35 A5                and  $A5,x              ; zero page,X
+000019r 1  2D FF FF             and  $FFFF              ; absolute
+00001Cr 1  3D 00 80             and  $8000,x            ; absolute,X
+00001Fr 1  39 FF 00             and  a:$00FF,y          ; absolute,Y
+000022r 1  21 10                and  ($10,x)            ; (indirect,X)
+000024r 1  31 FE                and  ($FE),y            ; (indirect),Y
+000026r 1                       ; ---- ASL
+000026r 1  0A                   asl  a                  ; accumulator
+000027r 1  06 00                asl  $00                ; zero page
+000029r 1  16 01                asl  $01,x              ; zero page,X
+00002Br 1  0E 00 01             asl  $0100              ; absolute
+00002Er 1  1E DE C0             asl  $C0DE,x            ; absolute,X
+000031r 1                       ; ---- BIT
+000031r 1  24 42                bit  $42                ; zero page
+000033r 1  2C 34 12             bit  $1234              ; absolute
+000036r 1                       ; ---- BRK
+000036r 1  00                   brk                     ; implied
+000037r 1                       ; ---- CLC
+000037r 1  18                   clc                     ; implied
+000038r 1                       ; ---- CLD
+000038r 1  D8                   cld                     ; implied
+000039r 1                       ; ---- CLI
+000039r 1  58                   cli                     ; implied
+00003Ar 1                       ; ---- CLV
+00003Ar 1  B8                   clv                     ; implied
+00003Br 1                       ; ---- CMP
+00003Br 1  C9 7F                cmp  #$7F               ; immediate
+00003Dr 1  C5 80                cmp  $80                ; zero page
+00003Fr 1  D5 FF                cmp  $FF,x              ; zero page,X
+000041r 1  CD CD AB             cmp  $ABCD              ; absolute
+000044r 1  DD 00 02             cmp  $0200,x            ; absolute,X
+000047r 1  D9 FF FF             cmp  $FFFF,y            ; absolute,Y
+00004Ar 1  C1 A5                cmp  ($A5,x)            ; (indirect,X)
+00004Cr 1  D1 10                cmp  ($10),y            ; (indirect),Y
+00004Er 1                       ; ---- CPX
+00004Er 1  E0 80                cpx  #$80               ; immediate
+000050r 1  E4 FE                cpx  $FE                ; zero page
+000052r 1  EC 00 80             cpx  $8000              ; absolute
+000055r 1                       ; ---- CPY
+000055r 1  C0 FF                cpy  #$FF               ; immediate
+000057r 1  C4 00                cpy  $00                ; zero page
+000059r 1  CC FF 00             cpy  a:$00FF            ; absolute
+00005Cr 1                       ; ---- DEC
+00005Cr 1  C6 01                dec  $01                ; zero page
+00005Er 1  D6 42                dec  $42,x              ; zero page,X
+000060r 1  CE 00 01             dec  $0100              ; absolute
+000063r 1  DE DE C0             dec  $C0DE,x            ; absolute,X
+000066r 1                       ; ---- DEX
+000066r 1  CA                   dex                     ; implied
+000067r 1                       ; ---- DEY
+000067r 1  88                   dey                     ; implied
+000068r 1                       ; ---- EOR
+000068r 1  49 A5                eor  #$A5               ; immediate
+00006Ar 1  45 80                eor  $80                ; zero page
+00006Cr 1  55 FF                eor  $FF,x              ; zero page,X
+00006Er 1  4D 34 12             eor  $1234              ; absolute
+000071r 1  5D CD AB             eor  $ABCD,x            ; absolute,X
+000074r 1  59 00 02             eor  $0200,y            ; absolute,Y
+000077r 1  41 A5                eor  ($A5,x)            ; (indirect,X)
+000079r 1  51 10                eor  ($10),y            ; (indirect),Y
+00007Br 1                       ; ---- INC
+00007Br 1  E6 FE                inc  $FE                ; zero page
+00007Dr 1  F6 00                inc  $00,x              ; zero page,X
+00007Fr 1  EE FF FF             inc  $FFFF              ; absolute
+000082r 1  FE 00 80             inc  $8000,x            ; absolute,X
+000085r 1                       ; ---- INX
+000085r 1  E8                   inx                     ; implied
+000086r 1                       ; ---- INY
+000086r 1  C8                   iny                     ; implied
+000087r 1                       ; ---- JMP
+000087r 1  4C FF 00             jmp  $00FF              ; absolute
+00008Ar 1  6C CD AB             jmp  ($ABCD)            ; (indirect)
+00008Dr 1                       ; ---- JSR
+00008Dr 1  20 DE C0             jsr  $C0DE              ; absolute
+000090r 1                       ; ---- LDA
+000090r 1  A9 3C                lda  #$3C               ; immediate
+000092r 1  A5 01                lda  $01                ; zero page
+000094r 1  B5 42                lda  $42,x              ; zero page,X
+000096r 1  AD 34 12             lda  $1234              ; absolute
+000099r 1  BD CD AB             lda  $ABCD,x            ; absolute,X
+00009Cr 1  B9 00 02             lda  $0200,y            ; absolute,Y
+00009Fr 1  A1 80                lda  ($80,x)            ; (indirect,X)
+0000A1r 1  B1 FF                lda  ($FF),y            ; (indirect),Y
+0000A3r 1                       ; ---- LDX
+0000A3r 1  A2 C3                ldx  #$C3               ; immediate
+0000A5r 1  A6 A5                ldx  $A5                ; zero page
+0000A7r 1  B6 10                ldx  $10,y              ; zero page,Y
+0000A9r 1  AE FF FF             ldx  $FFFF              ; absolute
+0000ACr 1  BE 00 80             ldx  $8000,y            ; absolute,Y
+0000AFr 1                       ; ---- LDY
+0000AFr 1  A0 00                ldy  #$00               ; immediate
+0000B1r 1  A4 FE                ldy  $FE                ; zero page
+0000B3r 1  B4 00                ldy  $00,x              ; zero page,X
+0000B5r 1  AC FF 00             ldy  a:$00FF            ; absolute
+0000B8r 1  BC 00 01             ldy  $0100,x            ; absolute,X
+0000BBr 1                       ; ---- LSR
+0000BBr 1  4A                   lsr  a                  ; accumulator
+0000BCr 1  46 01                lsr  $01                ; zero page
+0000BEr 1  56 42                lsr  $42,x              ; zero page,X
+0000C0r 1  4E DE C0             lsr  $C0DE              ; absolute
+0000C3r 1  5E 34 12             lsr  $1234,x            ; absolute,X
+0000C6r 1                       ; ---- NOP
+0000C6r 1  EA                   nop                     ; implied
+0000C7r 1                       ; ---- ORA
+0000C7r 1  09 01                ora  #$01               ; immediate
+0000C9r 1  05 80                ora  $80                ; zero page
+0000CBr 1  15 FF                ora  $FF,x              ; zero page,X
+0000CDr 1  0D CD AB             ora  $ABCD              ; absolute
+0000D0r 1  1D 00 02             ora  $0200,x            ; absolute,X
+0000D3r 1  19 FF FF             ora  $FFFF,y            ; absolute,Y
+0000D6r 1  01 A5                ora  ($A5,x)            ; (indirect,X)
+0000D8r 1  11 10                ora  ($10),y            ; (indirect),Y
+0000DAr 1                       ; ---- PHA
+0000DAr 1  48                   pha                     ; implied
+0000DBr 1                       ; ---- PHP
+0000DBr 1  08                   php                     ; implied
+0000DCr 1                       ; ---- PLA
+0000DCr 1  68                   pla                     ; implied
+0000DDr 1                       ; ---- PLP
+0000DDr 1  28                   plp                     ; implied
+0000DEr 1                       ; ---- ROL
+0000DEr 1  2A                   rol  a                  ; accumulator
+0000DFr 1  26 FE                rol  $FE                ; zero page
+0000E1r 1  36 00                rol  $00,x              ; zero page,X
+0000E3r 1  2E 00 80             rol  $8000              ; absolute
+0000E6r 1  3E FF 00             rol  a:$00FF,x          ; absolute,X
+0000E9r 1                       ; ---- ROR
+0000E9r 1  6A                   ror  a                  ; accumulator
+0000EAr 1  66 01                ror  $01                ; zero page
+0000ECr 1  76 42                ror  $42,x              ; zero page,X
+0000EEr 1  6E 00 01             ror  $0100              ; absolute
+0000F1r 1  7E DE C0             ror  $C0DE,x            ; absolute,X
+0000F4r 1                       ; ---- RTI
+0000F4r 1  40                   rti                     ; implied
+0000F5r 1                       ; ---- RTS
+0000F5r 1  60                   rts                     ; implied
+0000F6r 1                       ; ---- SBC
+0000F6r 1  E9 7F                sbc  #$7F               ; immediate
+0000F8r 1  E5 80                sbc  $80                ; zero page
+0000FAr 1  F5 FF                sbc  $FF,x              ; zero page,X
+0000FCr 1  ED 34 12             sbc  $1234              ; absolute
+0000FFr 1  FD CD AB             sbc  $ABCD,x            ; absolute,X
+000102r 1  F9 00 02             sbc  $0200,y            ; absolute,Y
+000105r 1  E1 A5                sbc  ($A5,x)            ; (indirect,X)
+000107r 1  F1 10                sbc  ($10),y            ; (indirect),Y
+000109r 1                       ; ---- SEC
+000109r 1  38                   sec                     ; implied
+00010Ar 1                       ; ---- SED
+00010Ar 1  F8                   sed                     ; implied
+00010Br 1                       ; ---- SEI
+00010Br 1  78                   sei                     ; implied
+00010Cr 1                       ; ---- STA
+00010Cr 1  85 FE                sta  $FE                ; zero page
+00010Er 1  95 00                sta  $00,x              ; zero page,X
+000110r 1  8D FF FF             sta  $FFFF              ; absolute
+000113r 1  9D 00 80             sta  $8000,x            ; absolute,X
+000116r 1  99 FF 00             sta  a:$00FF,y          ; absolute,Y
+000119r 1  81 01                sta  ($01,x)            ; (indirect,X)
+00011Br 1  91 42                sta  ($42),y            ; (indirect),Y
+00011Dr 1                       ; ---- STX
+00011Dr 1  86 80                stx  $80                ; zero page
+00011Fr 1  96 FF                stx  $FF,y              ; zero page,Y
+000121r 1  8E 00 01             stx  $0100              ; absolute
+000124r 1                       ; ---- STY
+000124r 1  84 A5                sty  $A5                ; zero page
+000126r 1  94 10                sty  $10,x              ; zero page,X
+000128r 1  8C DE C0             sty  $C0DE              ; absolute
+00012Br 1                       ; ---- TAX
+00012Br 1  AA                   tax                     ; implied
+00012Cr 1                       ; ---- TAY
+00012Cr 1  A8                   tay                     ; implied
+00012Dr 1                       ; ---- TSX
+00012Dr 1  BA                   tsx                     ; implied
+00012Er 1                       ; ---- TXA
+00012Er 1  8A                   txa                     ; implied
+00012Fr 1                       ; ---- TXS
+00012Fr 1  9A                   txs                     ; implied
+000130r 1                       ; ---- TYA
+000130r 1  98                   tya                     ; implied
+000131r 1               
+000131r 1                       ; ---- branches: offset = target - (address of branch + 2)
+000131r 1                       ; "*" is the address of the branch instruction itself
+000131r 1  90 08                bcc  *+10               ; relative, offset $08 (+8)
+000133r 1  90 F4                bcc  *-10               ; relative, offset $F4 (-12)
+000135r 1  B0 08                bcs  *+10               ; relative, offset $08 (+8)
+000137r 1  B0 F4                bcs  *-10               ; relative, offset $F4 (-12)
+000139r 1  F0 08                beq  *+10               ; relative, offset $08 (+8)
+00013Br 1  F0 F4                beq  *-10               ; relative, offset $F4 (-12)
+00013Dr 1  30 08                bmi  *+10               ; relative, offset $08 (+8)
+00013Fr 1  30 F4                bmi  *-10               ; relative, offset $F4 (-12)
+000141r 1  D0 08                bne  *+10               ; relative, offset $08 (+8)
+000143r 1  D0 F4                bne  *-10               ; relative, offset $F4 (-12)
+000145r 1  10 08                bpl  *+10               ; relative, offset $08 (+8)
+000147r 1  10 F4                bpl  *-10               ; relative, offset $F4 (-12)
+000149r 1  50 08                bvc  *+10               ; relative, offset $08 (+8)
+00014Br 1  50 F4                bvc  *-10               ; relative, offset $F4 (-12)
+00014Dr 1  70 08                bvs  *+10               ; relative, offset $08 (+8)
+00014Fr 1  70 F4                bvs  *-10               ; relative, offset $F4 (-12)
+000151r 1                       ; edge cases of the signed 8-bit offset
+000151r 1  D0 7F                bne  *+129              ; relative, offset $7F (+127)
+000153r 1  D0 80                bne  *-126              ; relative, offset $80 (-128)
+000155r 1  D0 00                bne  *+2                ; relative, offset $00 (+0)
+000157r 1  D0 FE                bne  *                  ; relative, offset $FE (-2)
+000159r 1               
+000159r 1               rom_end:
+000159r 1               
+000159r 1               .ifdef ILLEGAL_BYTES
+000159r 1                       ; undocumented opcodes, emitted as raw bytes (ca65 refuses them with
+000159r 1                       ; .setcpu "6502"). Decide what your disassembler should show for these.
+000159r 1                       .byte $02               ; KIL/JAM
+000159r 1                       .byte $03, $10          ; SLO (indirect,X)
+000159r 1                       .byte $A7, $20          ; LAX zero page
+000159r 1                       .byte $EB, $30          ; SBC immediate (unofficial duplicate)
+000159r 1                       .byte $FF, $34, $12     ; ISC absolute,X
+000159r 1               .endif
+000159r 1               
