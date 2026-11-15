@@ -23,6 +23,11 @@
 #define TRUE			1
 #define FALSE			0
 
+/*
+ * Todo later:
+ * -> Show properly OPCODES that uses the Accumulator Addr Mode
+ */
+
 
 uint8_t is_opcode_branch(uint8_t opcode)
 {
@@ -175,8 +180,8 @@ disassemble_asm_list disassemble(uint8_t *rom, uint64_t rom_size)
 uint8_t disassemble_alloc_asm_code(disassemble_asm_list *list, uint64_t index, char *text)
 {
 	uint16_t end_str_index = 0;
-	
 	disassemble_asm_code *data = (disassemble_asm_code *) malloc( sizeof(disassemble_asm_code) );
+	disassemble_asm_code *previous = NULL;
 
 	if (data == NULL)
 		return FALSE;
@@ -190,21 +195,26 @@ uint8_t disassemble_alloc_asm_code(disassemble_asm_list *list, uint64_t index, c
 	data->next = NULL;
 
 	if (list->head == NULL || list->tail == NULL) {
-		list->head = data;
-		list->tail = data;
+		data->previous	= NULL;
+		list->head 	= data;
+		list->tail 	= data;
 	} else {
-		list->tail->next = data;
-		list->tail = list->tail->next;
+		previous		= list->tail;
+		list->tail->next 	= data;
+		list->tail 		= list->tail->next;	
+		list->tail->previous	= previous;
 	}
 	return TRUE;
 }
 
-uint8_t disassemble_get_asm_code(disassemble_asm_code **explorer, uint64_t index, uint64_t *index_chain)
+uint8_t disassemble_get_asm_code(disassemble_asm_list *list, disassemble_asm_code **explorer, uint64_t index, uint64_t *index_chain)
 {
+	// Reset all infos
 	*index_chain 	= 0;
+	*explorer	= list->head;
 
 	while (TRUE) {
-
+		
 		if (*explorer == NULL)
 			return FALSE;
 		
@@ -212,7 +222,24 @@ uint8_t disassemble_get_asm_code(disassemble_asm_code **explorer, uint64_t index
 			return TRUE;
 		else
 			*explorer = (*explorer)->next;
-		
 		(*index_chain)++;
 	}
+}
+
+uint8_t disassemble_asm_code_next(disassemble_asm_code **code)
+{
+	if ((*code)->next == NULL)
+		return FALSE;
+	
+	*code = (*code)->next;
+	return TRUE;
+}
+
+uint8_t disassemble_asm_code_previous(disassemble_asm_code **code)
+{
+	if ((*code)->previous == NULL)
+		return FALSE;
+	
+	*code = (*code)->previous;
+	return TRUE;
 }

@@ -9,7 +9,6 @@
 //#define DEBUG_SINGLESTEPTESTS
 
 
-
 uint16_t c_cycles[3 * 256] = {0};
 uint16_t c_cycles_i = 0;
 
@@ -26,35 +25,31 @@ void raw_run(infra_raw * e, const char * bin, uint16_t memory_start)
 
 	while(1) {
 		processor_6502_execute_opcode(&(e->cpu));
+		processor_6502_response_interrupt_request_if_any(&(e->cpu));
 	}
 }
 
 void raw_run_with_monitor(infra_raw * e, uint8_t step_by_step, const char * bin, uint16_t memory_start)
 {
-	char stop_flag;
+	disassemble_asm_list asm_list;
 
 	if (! write_rom(&(e->memory), bin, memory_start) ) {
 		printf("Error: \'%s\' not found.\n", bin);
 		exit(EXIT_FAILURE);
 	}
 
+	asm_list = disassemble(e->memory.data, MEMORY_16_SIZE);
+
 	e->cpu.bus = (buses){ bus_raw_read, bus_raw_write, e };
 	processor_6502_initialization(&(e->cpu), PROCESSOR_6502_POWER_UP);
 
 	debugger_terminal_prepare();
+	debugger_terminal_run(&(e->cpu), &(e->memory), &asm_list, step_by_step);
 	while(1) {
 	
 		processor_6502_execute_opcode(&(e->cpu));
-		debugger_run(&(e->memory), &(e->cpu));
-		fflush(stdout);
-
-		if (step_by_step) {
-			scanf("%c", &stop_flag);
-			if (stop_flag == 'q')
-				break;
-		} else {
-			usleep(11 * 1000);
-		}
+		debugger_terminal_run(&(e->cpu), &(e->memory), &asm_list, step_by_step);
+		processor_6502_response_interrupt_request_if_any(&(e->cpu));
 	}
 	debugger_terminal_finish();
 }
@@ -84,8 +79,6 @@ void bus_raw_write(void *infra, uint16_t address, uint8_t data)
 	emu->cpu.cycles++;
 	emu->cpu.read_write = 1;
 
-	uint16_t i_port = 0xbffc;
-
 	#ifdef DEBUG_SINGLESTEPTESTS
 		c_cycles[c_cycles_i++] = address;
 		c_cycles[c_cycles_i++] = data;
@@ -93,10 +86,10 @@ void bus_raw_write(void *infra, uint16_t address, uint8_t data)
 	#endif
 	memory_write(&(emu->memory), address, data);
 
-	if (address == i_port) {
-		emu->cpu.irq_pin = ((data & 0x01) > 0) ? 0 : 1;
-		emu->cpu.nmi_request = data & 0x02;
-	}
 
+	if (address == 0xBFFC) {
+		emu->cpu.irq_pin = ((data & 1) > 0) ? IRQ_LOW_VALUE : IRQ_HIGH_VALUE;
+		emu->cpu.nmi_pin = (((data >> 1) & 1) > 0) ?NMI_LOW_VALUE : NMI_HIGH_VALUE;
+	}
 }
 

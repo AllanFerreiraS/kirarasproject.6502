@@ -1,0 +1,52 @@
+ca65 V2.19 - Git 2ea1df8b2
+Main file   : ./roms/rom_1.ca65
+Current file: ./roms/rom_1.ca65
+
+000000r 1               .segment "CODE"
+000000r 1               
+000000r 1               RESET:
+000000r 1  78               SEI             ; Disable IRQs initially
+000001r 1               
+000001r 1  A2 FF            LDX #$FF
+000003r 1  9A               TXS             ; Initialize stack pointer
+000004r 1               
+000004r 1  A9 00            LDA #$00
+000006r 1  8D 00 02         STA $0200       ; IRQ counter = 0
+000009r 1  8D 01 02         STA $0201       ; Main program counter marker = 0
+00000Cr 1               
+00000Cr 1  58               CLI             ; Enable IRQs
+00000Dr 1               
+00000Dr 1               MAIN:
+00000Dr 1  EE 01 02         INC $0201       ; Increment main program counter marker
+000010r 1               
+000010r 1  AE 01 02         LDX $0201	    ; Load Main program counter to X
+000013r 1               
+000013r 1  4C rr rr         JMP MAIN
+000016r 1               
+000016r 1               
+000016r 1               ; ==========================================
+000016r 1               ; IRQ HANDLER
+000016r 1               ; ==========================================
+000016r 1               
+000016r 1               IRQ:
+000016r 1  48               PHA             ; Save accumulator
+000017r 1               
+000017r 1  EE 00 02         INC $0200       ; Increment IRQ counter
+00001Ar 1               
+00001Ar 1  AC 00 02         LDY $0200	    ; Load IRQ counter to Y
+00001Dr 1               
+00001Dr 1  68               PLA             ; Restore accumulator
+00001Er 1               
+00001Er 1  40               RTI             ; Return from interrupt
+00001Fr 1               
+00001Fr 1               
+00001Fr 1               ; ==========================================
+00001Fr 1               ; INTERRUPT VECTORS
+00001Fr 1               ; ==========================================
+00001Fr 1               
+00001Fr 1               .segment "VECTORS"
+000000r 1               
+000000r 1  00 00        .word $0000         ; NMI
+000002r 1  rr rr        .word RESET         ; RESET
+000004r 1  rr rr        .word IRQ           ; IRQ / BRK
+000004r 1               

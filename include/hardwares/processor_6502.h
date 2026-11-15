@@ -5,9 +5,16 @@
 #include "./../buses.h"
 #include <stdint.h>
 
+// Stack Pointer Start Index
+#define ADDR_STK		0x100
+
 // Interrupt Pins
-#define PROCESSOR_6502_POWER_UP				1
 #define PROCESSOR_6502_RESET				0
+#define PROCESSOR_6502_POWER_UP				1
+#define IRQ_LOW_VALUE					0
+#define IRQ_HIGH_VALUE					1
+#define NMI_LOW_VALUE					0
+#define NMI_HIGH_VALUE					1
 
 // Addresses Mode Arbitrary Codes
 #define PROCESSOR_6502_ADDR_MODE_IMMEDIATE_CODE		0
@@ -62,6 +69,7 @@ typedef struct 	{
 // Public Functions
 void 	processor_6502_initialization(processor_6502 * processor, uint8_t is_power_up);
 void 	processor_6502_manual_initialization(processor_6502 * processor, uint16_t start_pc_addr);
+void	processor_6502_response_interrupt_request_if_any(processor_6502 * processor);
 void 	processor_6502_execute_opcode(processor_6502 * processor);
 uint8_t	processor_6502_get_opcode_infos(uint8_t opcode, char **name, char **mode, uint8_t *mode_code);
 

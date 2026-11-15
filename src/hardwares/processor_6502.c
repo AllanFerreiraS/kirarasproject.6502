@@ -20,13 +20,7 @@
 #define INTERRUPT_IRQ_LW_ADDR	0xFFFE		// IRQ/BRK Interrupt
 #define INTERRUPT_NMI_LW_ADDR	0xFFFA		// NMI Interrupt
 #define INTERRUPT_RESET_LW_ADDR	0xFFFC		// RESET Interrupt
-#define IRQ_LOW_VALUE		0
-#define IRQ_HIGH_VALUE		1
-#define NMI_LOW_VALUE		0
-#define NMI_HIGH_VALUE		1
 
-// Stack Pointer Start Index
-#define ADDR_STK		0x100
 
 // Others
 #define NUM_OPCODES		0x100		// Total amount of OPCODES
@@ -34,7 +28,10 @@
 #define TRUE			1
 #define FALSE			0
 
-
+/*
+ * LATER CHECKS:
+ * processor_6502_execute_opcode has to handle UNKOWN OPCODES
+ */
 
 
 // Function Pointers to handle Addressing Modes and Opcodes.
@@ -155,7 +152,6 @@ static uint8_t 	stack_read(processor_6502 * processor, uint8_t stack);
 static uint16_t	little_endian_solver(uint16_t low, uint16_t high, uint8_t add, uint16_t *carry);
 static uint8_t 	oops(uint8_t force_oops, uint8_t condition);
 static void	nmi_request_store_new_value(processor_6502 * processor);
-static void	response_interrupt_request_if_any(processor_6502 * processor);
 
 // Handles (Helpers)
 static void handle_interrupt_irq_nmi(processor_6502 * processor, uint16_t interrupt_lw_addr, uint8_t brk_triggered);
@@ -350,22 +346,6 @@ static void nmi_request_store_new_value(processor_6502 * processor)
 	processor->nmi_previous = processor->nmi_pin;
 }
 
-static void response_interrupt_request_if_any(processor_6502 * processor)
-{
-	if (processor->nmi_request) {
-		printf("NMI\n");
-		handle_interrupt_irq_nmi(processor, INTERRUPT_NMI_LW_ADDR, 0);
-		processor->nmi_request = 0;
-	}
-	
-	if ( (processor->irq_pin == IRQ_LOW_VALUE) && ((processor->reg_p & FLAG_INT) == 0) ) {
-		printf("IRQ\n");
-		handle_interrupt_irq_nmi(processor, INTERRUPT_IRQ_LW_ADDR, 0);
-		//processor->irq_pin = IRQ_HIGH_VALUE;
-	}
-}
-
-
 
 
 
@@ -375,7 +355,7 @@ static void response_interrupt_request_if_any(processor_6502 * processor)
 static bits_8 processor_read(processor_6502 * processor, uint16_t address)
 {
 	uint8_t data = processor->bus.read_fn((void *) processor->bus.infra, address);
-	nmi_request_store_new_value(processor);
+	//nmi_request_store_new_value(processor);
 	return data;
 }
 static void processor_write(processor_6502 * processor, uint16_t address, uint8_t data)
@@ -664,7 +644,6 @@ static void handle_interrupt_irq_nmi(processor_6502 * processor, uint16_t interr
 	bits_16 high_addr	= processor_read(processor, (interrupt_lw_addr + 1) & 0xFFFF);
 	bits_16 carry		= 0;
 	processor->reg_pc	= little_endian_solver(low_addr, high_addr, 0, &carry);
-
 }
 
 static void handle_branch(processor_6502 * processor, uint16_t addr, uint8_t condition)
@@ -1136,25 +1115,14 @@ static void op_nop(processor_6502 * processor, bits_16 addr)
 	UNUSED(addr);
 }
 
+
+
+
+
+
+
+
 // >> PUBLIC FUNCTIONS <<
-
-
-void execute_opcode(processor_6502 * processor)
-{	
-	bits_8 opcode = processor_read(processor, processor->reg_pc++);
-	opcode_entry execute = op_table[opcode];
-	
-	// It's crashing when an UNDEFINED OPCODE is accessed
-	if (execute.op == NULL) {
-		printf("UNDEFINED OPCODE...\n");
-		return;
-	}
-	printf("OPCODE: %s\n", execute.op_name);
-	bits_16 address = execute.mode(processor, execute.force_oops);
-	execute.op(processor, address);
-}
-
-
 
 uint8_t processor_6502_get_opcode_infos(uint8_t opcode, char **name, char **mode, uint8_t *mode_code)
 {
@@ -1263,10 +1231,35 @@ void processor_6502_initialization(processor_6502 * processor, uint8_t is_power_
 	processor->reg_pc = little_endian_solver(low_pc, high_pc, 0, &carry);
 }
 
-void processor_6502_execute_opcode(processor_6502 * processor)
+void processor_6502_response_interrupt_request_if_any(processor_6502 * processor)
 {
-	execute_opcode(processor);
-	response_interrupt_request_if_any(processor);
+	if (processor->nmi_request) {
+		//printf("NMI\n");
+		handle_interrupt_irq_nmi(processor, INTERRUPT_NMI_LW_ADDR, 0);
+		processor->nmi_request = 0;
+	}
+	
+	if ( (processor->irq_pin == IRQ_LOW_VALUE) && ((processor->reg_p & FLAG_INT) == 0) ) {
+		//printf("IRQ\n");
+		handle_interrupt_irq_nmi(processor, INTERRUPT_IRQ_LW_ADDR, 0);
+		processor->irq_pin = IRQ_HIGH_VALUE;
+	}
 }
 
+void processor_6502_execute_opcode(processor_6502 * processor)
+{	
+	bits_8 opcode = processor_read(processor, processor->reg_pc++);
+	opcode_entry execute = op_table[opcode];
+	
+	// It's crashing when an UNDEFINED OPCODE is accessed
+	if (execute.op == NULL) {
+		printf("UNDEFINED OPCODE...\n");
+		return;
+	}
+	bits_16 address = execute.mode(processor, execute.force_oops);
+	execute.op(processor, address);
+
+//	if ((processor->cycles % 0x16) == 0)
+//		processor->irq_pin = IRQ_LOW_VALUE;
+}
 

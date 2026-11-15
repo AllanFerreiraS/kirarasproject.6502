@@ -8,6 +8,7 @@
 typedef struct str_disassemble_asm_code {
 	uint64_t			index;
 	char 				text[DISASSEMBLE_STR_OPCODE_LEN + 1];
+	struct str_disassemble_asm_code *previous;
 	struct str_disassemble_asm_code	*next;
 } disassemble_asm_code;
 
@@ -17,7 +18,9 @@ typedef struct {
 } disassemble_asm_list;
 
 uint8_t disassemble_alloc_asm_code(disassemble_asm_list *list, uint64_t index, char *text);
-uint8_t disassemble_get_asm_code(disassemble_asm_code **explorer, uint64_t index, uint64_t *index_chain);
+uint8_t disassemble_get_asm_code(disassemble_asm_list *list, disassemble_asm_code **explorer, uint64_t index, uint64_t *index_chain);
+uint8_t disassemble_asm_code_next(disassemble_asm_code **code);
+uint8_t disassemble_asm_code_previous(disassemble_asm_code **code);
 disassemble_asm_list disassemble(uint8_t *rom, uint64_t rom_size);
 
 #endif
