@@ -1,4 +1,4 @@
-#include "../include/debugger.h"
+#include "./debugger.h"
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -73,7 +73,7 @@ void drawn_painel_data(memory_16 * memory)
 	uint8_t	line_pos = ZERO_PAGE_LINE;
 	uint8_t col_pos = ZERO_PAGE_COLUMN + 1;
 	uint8_t data = 0;
-	
+
 	tui_move_cursor_coord(line_pos, col_pos);
 	printf("     00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F");
 
@@ -87,7 +87,7 @@ void drawn_painel_data(memory_16 * memory)
 			else
 				printf("%03x  ", i);
 		}
-		
+
 		// DATA
 		data = memory_read(memory, i);
 		tui_change_terminal_color(COLOR_FORE_GREEN);
@@ -106,7 +106,7 @@ void drawn_registers(processor_6502 * processor)
 {
 	uint8_t line_pos = REGISTERS_LINE;
 	uint8_t col_pos = REGISTERS_COLUMN + 1;
-	
+
 	// Print the Registers A, X and Y
 	tui_move_cursor_coord(line_pos, col_pos);
 	printf("A:");
@@ -156,7 +156,7 @@ void drawn_registers(processor_6502 * processor)
 		printf("NMI");
 	}
 
-	// Print the PC and Stack value 
+	// Print the PC and Stack value
 	tui_move_cursor_coord(++line_pos,col_pos);
 	printf("PC:");
 	tui_change_terminal_color(COLOR_FORE_GREEN);
@@ -200,15 +200,15 @@ void drawn_asm_text(disassemble_asm_list *asm_list, uint64_t index)
 		empty_lines--;
 	}
 
-	tui_move_cursor_coord(line_pos, col_pos);	
+	tui_move_cursor_coord(line_pos, col_pos);
 	for (uint8_t i = 0; i < AMOUNT_PRINT_ASM_LINES; i++) {
-		
+
 		if (i < empty_lines) {
 			printf(" ");
 			tui_move_cursor_coord(++line_pos, col_pos);
 			continue;
 		}
-		
+
 		if ( i == CURRENT_OPCODE_OFFSET) {
 			tui_change_terminal_color(COLOR_BACK_GREEN);
 			printf("%s", code->text);
@@ -230,7 +230,7 @@ void debugger_print_formated_flags(const char *label, uint8_t flag)
 {
 	char *formated = "NV1BDIZC";
 	uint8_t mask = (1) << 7;
-	
+
 	printf("%s:", label);
 	for (uint8_t i = 0; i < 8; i++) {
 		if ((flag & mask) > 0) {

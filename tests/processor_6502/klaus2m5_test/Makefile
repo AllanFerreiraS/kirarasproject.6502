@@ -1,33 +1,30 @@
 #----------------------------
-#	Bin Programs 
+#	Bin Programs
 #----------------------------
 CC = gcc
-# C_DEFINES
-CFLAGS = -Wall -Wextra -Iprocessor
+# C_DEFINES = -DFRONTEND_DEBUGGER
+CFLAGS = -Wall -Wextra -g -fsanitize=address -Iprocessor
 CA65 = ca65
 LD65 = ld65
 RM = rm
 
 #----------------------------
-#	   Folders 
+#	   Folders
 #----------------------------
-BUILD_DIR = build
+BUILD_DIR = ./build
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
 #----------------------------
 #	   SOURCES
 #----------------------------
-# Hardware
+SRC_PATH = ./../../../src
+EMULATOR_PATH = ./../../../emulators
+
 SRC_CORE = \
-	./../../../src/hardwares/processor_6502.c \
-	./../../../src/hardwares/memory_16.c \
-	./../../../emulators/raw/raw.c \
-	./../../../src/terminal_ui.c \
-	./../../../src/debugger.c \
-	./../../../src/disassemble.c
-# Debugger
-# SRC_DEBUGGER = \
+	$(SRC_PATH)/hardwares/processor_6502.c \
+	$(SRC_PATH)/hardwares/memory_16.c \
+	$(EMULATOR_PATH)/raw/raw.c
 
 #----------------------------
 #	   Files
@@ -41,22 +38,22 @@ F_KLAUS_CFG = klaus2m5_test.cfg
 #----------------------------
 #      Make Executables
 #----------------------------
-all: test_interrupt test_functional test_decimal
+all: test_klaus2m5 rom_interrupt rom_functional rom_decimal
 
-test_interrupt:
+test_klaus2m5:
 	$(CC) $(CFLAGS) $(F_C_MAIN).c $(SRC_CORE) -o $(BUILD_DIR)/$(F_C_MAIN)
+
+rom_interrupt:
 	$(CA65) -l $(F_ASM_INTERRUPT).lst $(F_ASM_INTERRUPT).ca65
 	$(LD65) $(F_ASM_INTERRUPT).o -o $(BUILD_DIR)/$(F_ASM_INTERRUPT).bin -C $(F_KLAUS_CFG)
 	rm ./*.o
 
-test_functional:
-	$(CC) $(CFLAGS) $(F_C_MAIN).c $(SRC_CORE) -o $(BUILD_DIR)/$(F_C_MAIN)
+rom_functional:
 	$(CA65) -l $(F_ASM_FUNCTIONAL).lst $(F_ASM_FUNCTIONAL).ca65
 	$(LD65) $(F_ASM_FUNCTIONAL).o -o $(BUILD_DIR)/$(F_ASM_FUNCTIONAL).bin -C $(F_KLAUS_CFG)
 	rm ./*.o
 
-test_decimal:
-	$(CC) $(CFLAGS) $(F_C_MAIN).c $(SRC_CORE) -o $(BUILD_DIR)/$(F_C_MAIN)
+rom_decimal:
 	$(CA65) -l $(F_ASM_DECIMAL).lst $(F_ASM_DECIMAL).ca65
 	$(LD65) $(F_ASM_DECIMAL).o -o $(BUILD_DIR)/$(F_ASM_DECIMAL).bin -C $(F_KLAUS_CFG)
 	rm ./*.o

@@ -210,8 +210,8 @@ static const opcode_entry op_table[NUM_OPCODES] = {
 	[0x6D]	=	{ "ADC", "Absolute",		op_adc, 	mode_absolute,		0 }, // PASSED
 	[0x7D]	=	{ "ADC", "Absolute,X",		op_adc, 	mode_absolute_x,	0 }, // PASSED
 	[0x79]	=	{ "ADC", "Absolute,Y",		op_adc, 	mode_absolute_y,	0 }, // PASSED
-	[0x61]	=	{ "ADC", "(Indirect,X)",	op_adc, 	mode_indirect_x,	0 }, // PASSED 
-	[0x71]	=	{ "ADC", "(Indirect),Y",	op_adc, 	mode_indirect_y,	0 }, // PASSED 
+	[0x61]	=	{ "ADC", "(Indirect,X)",	op_adc, 	mode_indirect_x,	0 }, // PASSED
+	[0x71]	=	{ "ADC", "(Indirect),Y",	op_adc, 	mode_indirect_y,	0 }, // PASSED
 	[0xE9]	=	{ "SBC", "Immediate",		op_sbc, 	mode_immediate,		0 }, // PASSED
 	[0xE5]	=	{ "SBC", "Zero Page",		op_sbc, 	mode_zero_page,		0 }, // PASSED
 	[0xF5]	=	{ "SBC", "Zero Page,X",		op_sbc, 	mode_zero_page_x,	0 }, // PASSED
@@ -558,18 +558,18 @@ static void handle_op_adc_decimal_mode(processor_6502 * p, uint8_t data)
 	uint16_t old_a 	= p->reg_a;
 
 	set_flag(p, FLAG_ZER, ((r_bin & 0xFF) == 0x00));
-				
+
 	if (r >= 0x0A)
-		r = ((r + 0x06) & 0x0F) + 0x10;	
+		r = ((r + 0x06) & 0x0F) + 0x10;
 
 	r = (p->reg_a & 0xF0) + (data & 0xF0) + r;
 
 	set_flag(p, FLAG_NEG, (r & FLAG_NEG));
-	set_flag(p, FLAG_OVF, (r ^ old_a) & (r ^ ((uint16_t)data)) & 0x0080);	
+	set_flag(p, FLAG_OVF, (r ^ old_a) & (r ^ ((uint16_t)data)) & 0x0080);
 
 	if (r >= 0xA0)
 		r = r + 0x60;
-	
+
 	set_flag(p, FLAG_CAR, (r >= 0x100));
 
 	p->reg_a = r & 0xFF;
@@ -586,14 +586,14 @@ static void handle_op_sbc_decimal_mode(processor_6502 * p, uint8_t data)
 	set_flag(p, FLAG_CAR, (~((int16_t)r_bin)) < 0x00);
 	set_flag(p, FLAG_ZER, ((r_bin & 0xFF) == 0x00));
 	set_flag(p, FLAG_OVF, (r_bin ^ old_a) & (r_bin ^ (~(uint16_t)data)) & 0x0080);
-			
+
 	if ((int16_t)r < 0)
-		r = ((r - 0x06) & 0x0F) - 0x10;	
+		r = ((r - 0x06) & 0x0F) - 0x10;
 
 	r = (p->reg_a & 0xF0) - (data & 0xF0) + r;
 	if ((int16_t)r < 0)
 		r = (r - 0x60) & 0xFF;
-	
+
 
 	p->reg_a = r & 0xFF;
 }
@@ -663,7 +663,7 @@ static void handle_branch(processor_6502 * processor, uint16_t addr, uint8_t con
 		else if ((low_buf + (int8_t)relat) < 0) {
 			processor_read(processor, processor->reg_pc);
 			processor->reg_pc -= 0x100;
-		}	
+		}
 	}
 }
 
@@ -985,7 +985,7 @@ static void op_bvs(processor_6502 * processor, bits_16 addr)
 
 static void op_jmp(processor_6502 * processor, bits_16 addr)
 {
-	processor->reg_pc = addr;	
+	processor->reg_pc = addr;
 }
 
 static void op_jsr(processor_6502 * processor, bits_16 addr)
@@ -1132,14 +1132,14 @@ uint8_t processor_6502_get_opcode_infos(uint8_t opcode, char **name, char **mode
 	uint8_t return_status = TRUE;
 
 	if (op_table[opcode].op_name != NULL) {
-		
+
 		// Get OPCODE Name
 		for (; op_table[opcode].op_name[i] != '\0'; i++ )
 			m_name[i] = op_table[opcode].op_name[i];
 		m_name[i] = '\0';
-	
+
 		i = 0;
-	
+
 		// Get ADDR MODE name
 		for (; op_table[opcode].mode_name[i] != '\0'; i++ )
 			m_mode[i] = op_table[opcode].mode_name[i];
@@ -1184,7 +1184,7 @@ uint8_t processor_6502_get_opcode_infos(uint8_t opcode, char **name, char **mode
 }
 
 void processor_6502_manual_initialization(processor_6502 * processor, uint16_t start_pc_addr)
-{	
+{
 	processor->reg_a	= 0x00;
 	processor->reg_x	= 0x00;
 	processor->reg_y	= 0x00;
@@ -1219,7 +1219,7 @@ void processor_6502_initialization(processor_6502 * processor, uint8_t is_power_
 	}
 
 	set_flag(processor, FLAG_NOEFFECT, 1);
-	set_flag(processor, FLAG_INT, 1);	
+	set_flag(processor, FLAG_INT, 1);
 	(void) processor_read(processor, processor->reg_pc & 0xFFFF);				// Cycle 1
 	(void) processor_read(processor, (processor->reg_pc + 1) & 0xFFFF);			// Cycle 2
 	(void) stack_read(processor, (processor->reg_sp--) & 0xFF);				// Cycle 3
@@ -1231,6 +1231,7 @@ void processor_6502_initialization(processor_6502 * processor, uint8_t is_power_
 	processor->reg_pc = little_endian_solver(low_pc, high_pc, 0, &carry);
 }
 
+//{{{
 void processor_6502_response_interrupt_request_if_any(processor_6502 * processor)
 {
 	if (processor->nmi_request) {
@@ -1238,19 +1239,20 @@ void processor_6502_response_interrupt_request_if_any(processor_6502 * processor
 		handle_interrupt_irq_nmi(processor, INTERRUPT_NMI_LW_ADDR, 0);
 		processor->nmi_request = 0;
 	}
-	
+
 	if ( (processor->irq_pin == IRQ_LOW_VALUE) && ((processor->reg_p & FLAG_INT) == 0) ) {
 		//printf("IRQ\n");
 		handle_interrupt_irq_nmi(processor, INTERRUPT_IRQ_LW_ADDR, 0);
 		processor->irq_pin = IRQ_HIGH_VALUE;
 	}
 }
+//}}}
 
 void processor_6502_execute_opcode(processor_6502 * processor)
-{	
+{
 	bits_8 opcode = processor_read(processor, processor->reg_pc++);
 	opcode_entry execute = op_table[opcode];
-	
+
 	// It's crashing when an UNDEFINED OPCODE is accessed
 	if (execute.op == NULL) {
 		printf("UNDEFINED OPCODE...\n");
@@ -1258,8 +1260,6 @@ void processor_6502_execute_opcode(processor_6502 * processor)
 	}
 	bits_16 address = execute.mode(processor, execute.force_oops);
 	execute.op(processor, address);
-
 //	if ((processor->cycles % 0x16) == 0)
 //		processor->irq_pin = IRQ_LOW_VALUE;
 }
-

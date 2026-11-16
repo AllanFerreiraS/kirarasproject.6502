@@ -1,4 +1,5 @@
 #include "./../../../emulators/raw/raw.h"
+#include "./../../../frontend/disassemble/disassemble.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -15,13 +16,13 @@
 #define FALSE	0
 
 int main (int argc, const char *argv[])
-{	
+{
 	if (argc <= 1) {
 		printf("Error: The path for bin file is required.\n");
 		printf("\t>> Example: ./klaus2m5_test ./6502_functional_test.bin\n");
 		exit(EXIT_FAILURE);
 	}
-	
+
 	const char 		*file_path = argv[1];
 	uint16_t 		previous_opcode = 0;
 	uint64_t 		counter = 0;
@@ -55,21 +56,16 @@ int main (int argc, const char *argv[])
 		printf("\t\t- 6502_decimal_test.bin\n");
 		exit(EXIT_FAILURE);
 	}
-	
-	asm_list =  disassemble(emu.memory.data, MEMORY_16_SIZE);
+
 	emu.cpu.bus = (buses) { bus_raw_read, bus_raw_write, &emu  };
 	processor_6502_manual_initialization(&(emu.cpu), PC_ADDR);
-	
+
 	printf("Testing...\n");
-	
-	//debugger_terminal_prepare();
-	//debugger_terminal_run(&(emu.cpu), &(emu.memory), &asm_list, 0);
 	while (1) {
-		previous_opcode = emu.cpu.reg_pc;	
+		previous_opcode = emu.cpu.reg_pc;
 		counter++;
 
 		processor_6502_execute_opcode(&(emu.cpu));
-		//debugger_terminal_run(&(emu.cpu), &(emu.memory), &asm_list, 0);
 
 		if (test_type == TEST_INTERRUPT)
 			processor_6502_response_interrupt_request_if_any(&(emu.cpu));
@@ -77,7 +73,6 @@ int main (int argc, const char *argv[])
 		if (previous_opcode == emu.cpu.reg_pc)
 			break;
 	}
-	//debugger_terminal_finish();
 
 	if (test_type == TEST_FUNCTIONAL)
 		printf("Klaus2m5 6502 Functional Test\n");
@@ -99,7 +94,7 @@ int main (int argc, const char *argv[])
                 printf("\t\t; -------------\n");
                 printf("\t\t\t success         ;if you get here everything went well\n");
 		printf("3469 : 4c6934\t >       jmp *           ;test passed, no errors\n");
-		printf("\t\t; S U C C E S S ************************************************\n");	
+		printf("\t\t; S U C C E S S ************************************************\n");
 	}
 	else if ((test_type == TEST_INTERRUPT) && (emu.cpu.reg_pc == 0x6F5)){
 		printf("\t\t; S U C C E S S ************************************************\n");

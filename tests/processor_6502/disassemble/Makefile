@@ -1,44 +1,50 @@
 #----------------------------
-#	Bin Programs 
+#	Bin Programs
 #----------------------------
 CC = gcc
 # C_DEFINES
-CFLAGS = -Wall -Wextra -Iprocessor
+CFLAGS = -Wall -Wextra -g -fsanitize=address -Iprocessor
 CA65 = ca65
 LD65 = ld65
 RM = rm
 
 #----------------------------
-#	   Folders 
+#	   Folders
 #----------------------------
-BUILD_DIR = build
+BUILD_DIR = ./build
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
 #----------------------------
 #	   SOURCES
 #----------------------------
-# Hardware
+SRC_PATH = ./../../../src
+FRONTEND_PATH = ./../../../frontend
+
 SRC_CORE = \
-	./../../../src/hardwares/processor_6502.c \
-	./../../../src/hardwares/memory_16.c \
-	./../../../src/disassemble.c
-# Debugger
-# SRC_DEBUGGER = \
+	$(SRC_PATH)/hardwares/processor_6502.c \
+	$(SRC_PATH)/hardwares/memory_16.c
+
+SRC_FRONTEND = \
+	$(FRONTEND_PATH)/disassemble/disassemble.c
 
 #----------------------------
 #	   Files
 #----------------------------
-F_C_MAIN = disasm_test
+F_C_MAIN = test_disasm
 F_ASM = disasm
 
 #----------------------------
 #      Make Executables
 #----------------------------
 all:
-	$(CC) $(CFLAGS) $(F_C_MAIN).c $(SRC_CORE) -o $(BUILD_DIR)/$(F_C_MAIN)
+
+test_disasm: $(BUILD_DIR)
+	$(CC) $(CFLAGS) $(F_C_MAIN).c $(SRC_CORE) $(SRC_FRONTEND) -o $(BUILD_DIR)/$(F_C_MAIN)
+
+rom_disasm: $(BUILD_DIR)
 	$(CA65) -l $(F_ASM).lst $(F_ASM).ca65
 	$(LD65) $(F_ASM).o -o $(BUILD_DIR)/$(F_ASM).bin -C $(F_ASM).cfg
 	rm ./*.o
 clean:
-	rm -rf $(BUILD_DIR)/*
+	rm -r $(BUILD_DIR)/*

@@ -1,5 +1,5 @@
-#include "../include/disassemble.h"
-#include "../include/hardwares/processor_6502.h"
+#include "./disassemble.h"
+#include "./../../include/hardwares/processor_6502.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -61,7 +61,7 @@ void get_str_opcode_arg(char *buffer, uint8_t *rom, uint8_t addr_mode, uint64_t 
 
 	switch (addr_mode) {
 	case PROCESSOR_6502_ADDR_MODE_IMMEDIATE_CODE:
-		
+
 		// Special case
 		if ( rom[((*index) - 1)] == OPCODE_BRK )
 			break;
@@ -126,7 +126,7 @@ void get_str_opcode_arg(char *buffer, uint8_t *rom, uint8_t addr_mode, uint64_t 
 			(*index) = (*index) + 2;
 			break;
 		}
-		// If it is a BRANCH	
+		// If it is a BRANCH
 		if ( is_opcode_branch(rom[(*index) - 1]) ) {
 			op_arg = ((uint16_t) last_index + (uint16_t) 2) + (int8_t) rom[(*index)];
 			(void) sprintf(buffer, "$%04x", op_arg);
@@ -153,14 +153,14 @@ disassemble_asm_list disassemble(uint8_t *rom, uint64_t rom_size)
 
 	uint64_t	index 	 	= 0x0000;
 	uint64_t	opcode_index 	= 0x0000;
-	
+
 	disassemble_asm_list list = { .head = NULL, .tail = NULL };
-	
+
 	while (index < rom_size) {
 
 		opcode_index = index; // Get actual OPCODE position
 		(void) processor_6502_get_opcode_infos(rom[opcode_index], &op_name, &mode_name, &mode_code);
-		
+
 		get_str_opcode_arg(str_opcode_arg_buffer, rom, mode_code, &index, opcode_index);
 		(void) sprintf(str_assembly, "0x%08lx:  %s %s \t;%s", opcode_index, op_name, str_opcode_arg_buffer, mode_name);
 
@@ -201,7 +201,7 @@ uint8_t disassemble_alloc_asm_code(disassemble_asm_list *list, uint64_t index, c
 	} else {
 		previous		= list->tail;
 		list->tail->next 	= data;
-		list->tail 		= list->tail->next;	
+		list->tail 		= list->tail->next;
 		list->tail->previous	= previous;
 	}
 	return TRUE;
@@ -214,10 +214,10 @@ uint8_t disassemble_get_asm_code(disassemble_asm_list *list, disassemble_asm_cod
 	*explorer	= list->head;
 
 	while (TRUE) {
-		
+
 		if (*explorer == NULL)
 			return FALSE;
-		
+
 		if ((*explorer)->index == index)
 			return TRUE;
 		else
@@ -230,7 +230,7 @@ uint8_t disassemble_asm_code_next(disassemble_asm_code **code)
 {
 	if ((*code)->next == NULL)
 		return FALSE;
-	
+
 	*code = (*code)->next;
 	return TRUE;
 }
@@ -239,7 +239,7 @@ uint8_t disassemble_asm_code_previous(disassemble_asm_code **code)
 {
 	if ((*code)->previous == NULL)
 		return FALSE;
-	
+
 	*code = (*code)->previous;
 	return TRUE;
 }

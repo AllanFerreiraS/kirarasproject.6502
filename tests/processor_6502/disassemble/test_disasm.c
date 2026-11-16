@@ -1,6 +1,6 @@
 #include "./../../../include/hardwares/processor_6502.h"
 #include "./../../../include/hardwares/memory_16.h"
-#include "./../../../include/disassemble.h"
+#include "./../../../frontend/disassemble/disassemble.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -22,7 +22,7 @@ int main(int argc, const char *argv[])
 		printf("\t>> Example: ./test_disasm ./disasm.bin\n");
 		exit(EXIT_FAILURE);
 	}
-	
+
 	file_test = argv[1];
 
 	// Write in the ROM
@@ -30,19 +30,19 @@ int main(int argc, const char *argv[])
 		printf("Error: \'%s\' not found.\n", file_test);
 		exit(EXIT_FAILURE);
 	}
-	
+
 	// Get the disassembled ROM
 	asm_list = disassemble(mem.data, MEMORY_16_SIZE);
 
 	// Point to the start of the disassembled ROM
 	asm_code = asm_list.head;
 
-	// Make asm_code point to the code where OPCODE points to 0x8000	
+	// Make asm_code point to the code where OPCODE points to 0x8000
 	if (! disassemble_get_asm_code(&asm_list, &asm_code, OPCODE_INDEX, &index_current_opcode) ) {
 		perror("OPCODE in the chosen index not found");
 		exit(EXIT_FAILURE);
 	}
-	
+
 	for (uint8_t i = 0; i < 15; i++) {
 		if (! disassemble_asm_code_previous(&asm_code) ) {
 			// asm_code still points to the head
@@ -62,6 +62,6 @@ int main(int argc, const char *argv[])
 		}
 		usleep(50 * 1000);
 	}
-	
+
 	return 0;
 }

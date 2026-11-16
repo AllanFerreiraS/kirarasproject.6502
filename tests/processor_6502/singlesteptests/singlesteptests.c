@@ -1,5 +1,5 @@
-#include "./../../emulators/raw/raw.h"
-#include "./../../thirdparty/cJson/cJSON.h"
+#include "./../../../emulators/raw/raw.h"
+#include "./../../../thirdparty/cJson/cJSON.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -82,7 +82,7 @@ static char * get_json_content(const char * filename)
 
 	if (file == NULL)
         	return NULL;
-	
+
 	// Get File Size
 	fseek(file, 0, SEEK_END);
 	long file_size = ftell(file);
@@ -117,13 +117,13 @@ static uint8_t get_json_legal_opcodes(uint8_t *arr, uint16_t *size)
 	for (uint16_t i = 0; i < 0x100; i++)
 		arr[i] = 0;
 	*size = 0;
-	
+
 	char * content = get_json_content("./list_6502_opcodes/opcodes.json");
 	if (content == NULL) {
 		printf("Fatal Error: File \'./list_6502_opcodes/opcodes.json\' not found.\n");
 		return FALSE;
 	}
-	
+
 	cJSON *root = cJSON_Parse(content);
 	if (root == NULL) {
 		printf(">> Fatal Error: JSON_ROOT is NULL.\n");
@@ -140,21 +140,21 @@ static uint8_t get_json_legal_opcodes(uint8_t *arr, uint16_t *size)
 
 	cJSON *entry;
 	cJSON_ArrayForEach(entry, opcodes) {
-		
+
 		cJSON *value = cJSON_GetObjectItemCaseSensitive(entry, "opcode");
 		if (!cJSON_IsString(value)) {
 			printf("Error: Invalid OPCODE field value.\n");
 			return_status = FALSE;
 			goto goto_cleanup;
 		}
-			
+
 		cJSON *illegal = cJSON_GetObjectItemCaseSensitive(entry, "illegal");
 		if (!cJSON_IsBool(illegal)) {
 			printf("Error: Invalid Illegal field value.\n");
 			return_status = FALSE;
 			goto goto_cleanup;
 		}
-	
+
 		if (! cJSON_IsTrue(illegal) ) {
 			arr[(*size)++] = (uint8_t) strtol(value->valuestring, NULL, 0);
 		}
@@ -182,21 +182,21 @@ static uint8_t store_json_cycles(cJSON **test, uint16_t **cycles_expected, uint1
 
 	cycle_arr_size = (uint8_t) cJSON_GetArraySize(content);
 	c = (uint16_t *) malloc(3 * cycle_arr_size * sizeof(uint16_t));
-		
+
 	cJSON_ArrayForEach(entry, content) {
 		cJSON * addr 		= cJSON_GetArrayItem(entry, 0);
 		cJSON * value		= cJSON_GetArrayItem(entry, 1);
 		cJSON * read_write	= cJSON_GetArrayItem(entry, 2);
-		
+
 		if (!cJSON_IsNumber(addr) || !cJSON_IsNumber(value) || !cJSON_IsString(read_write)) {
 			printf("Error: Invalid memory values");
 			free(c);
 			return FALSE;
 		}
-		
+
 		c[i++] = (uint16_t) addr->valueint;
 		c[i++] = (uint16_t) value->valueint;
-		c[i++] = (uint16_t) ((strcmp((char *)read_write->valuestring, "write") == 0) ? 1 : 0);	
+		c[i++] = (uint16_t) ((strcmp((char *)read_write->valuestring, "write") == 0) ? 1 : 0);
 	}
 
 	*cycles_expected = c;
@@ -212,7 +212,7 @@ static uint8_t store_json_processor_content(processor_6502 * processor, cJSON **
 		printf("Error when tried to store json processor content.\n");
 		return FALSE;
 	}
-	
+
 	cJSON *pc = cJSON_GetObjectItemCaseSensitive(content, "pc");
 	if (!cJSON_IsNumber(pc)) {
 		printf("Error: Invalid initial PC\n");
@@ -265,7 +265,7 @@ static uint8_t store_json_memory_content(memory_16 * memory, cJSON **test, const
 	cJSON *content 	= cJSON_GetObjectItemCaseSensitive(*test, field);
 
 	clean_memory(memory);
-	
+
 	if (content == NULL) {
 		printf("Error when tried to store json memory content.\n");
 		return FALSE;
@@ -285,7 +285,7 @@ static uint8_t store_json_memory_content(memory_16 * memory, cJSON **test, const
 
 		memory_write(memory, (uint16_t)addr->valueint, (uint8_t)value->valueint);
 	}
-	
+
 	return TRUE;
 }
 
@@ -296,7 +296,7 @@ static void set_reg_error(const char * reg_name, uint64_t got, uint64_t expected
 	char expected_bin[9] = {0};
 
 	if (*error_message == NULL)
-		return;	
+		return;
 	if ( strcmp(reg_name,"P") == 0 ) {
 		u8_decimal_to_binary_string((uint8_t) got, got_bin);
 		u8_decimal_to_binary_string((uint8_t) expected, expected_bin);
@@ -305,7 +305,7 @@ static void set_reg_error(const char * reg_name, uint64_t got, uint64_t expected
 	} else {
 		snprintf(*error_message, ERROR_MESSAGE_SIZE, "PROCESSOR REG_%s: got %lu expected %lu.\n", reg_name, got, expected);
 	}
-	return;	
+	return;
 }
 
 static uint8_t compare_processor(processor_6502 * p_cpu, processor_6502 * p_expected, char **error_message)
@@ -422,13 +422,13 @@ static uint8_t init_test(processor_6502 * p_cpu, processor_6502 * p_expected, me
 
 	uint16_t *cycles_expected 	= NULL;
 	uint16_t cycles_expected_size 	= 0;
-	
+
 	counter.passed = 0;
 	counter.failed = 0;
 
 	printf("Testing...\n");
 	cJSON_ArrayForEach(test, *root) {
-		
+
 		if (! store_json_processor_content(p_cpu, &test, "initial") ) {
 			free_feedbacks(feedbacks, counter.failed);
 			return FALSE;
@@ -460,7 +460,7 @@ static uint8_t init_test(processor_6502 * p_cpu, processor_6502 * p_expected, me
 		}
 
 		processor_6502_execute_opcode(p_cpu);
-		
+
 		// The SingleStepTests does not simulate INTERRUPTS
 		//processor_6502_response_interrupt_request_if_any(p_cpu);
 
@@ -477,7 +477,7 @@ static uint8_t init_test(processor_6502 * p_cpu, processor_6502 * p_expected, me
 			counter.failed++;
 			goto goto_end;
 		}
-		
+
 		if (! compare_cycles(c_cycles, c_cycles_i, cycles_expected, cycles_expected_size, &error_message)
  ) {
 			feedbacks[counter.failed].test_name = test_name;
@@ -485,7 +485,7 @@ static uint8_t init_test(processor_6502 * p_cpu, processor_6502 * p_expected, me
 			counter.failed++;
 			goto goto_end;
 		}
-		
+
 		counter.passed++;
 
 goto_end:
@@ -494,7 +494,7 @@ goto_end:
 		cycles_expected_size = 0;
 		c_cycles_i = 0;
 	}
-	
+
 	print_results(counter, feedbacks);
 	free_feedbacks(feedbacks, counter.failed);
 	return TRUE;
@@ -502,7 +502,7 @@ goto_end:
 
 static uint8_t all_files_test(infra_raw * emulator, infra_raw * emulator_expected)
 {
-	
+
 	uint8_t arr[0x100] = {0};
 	uint16_t arr_size = 0;
 	if (! get_json_legal_opcodes(arr, &arr_size) )
@@ -511,7 +511,7 @@ static uint8_t all_files_test(infra_raw * emulator, infra_raw * emulator_expecte
 	uint16_t file_counter = 0;
 
 	for (uint16_t i = 0; i < arr_size; i++) {
-		
+
 		char * filename = allocate_message_error(); // Preguiça de mudar o nome da função...
 		snprintf(filename, ERROR_MESSAGE_SIZE, "./v1/%02x.json", arr[i]);
 
@@ -597,7 +597,7 @@ int main (int argc, char *argv[])
 
 	processor_6502 p_cpu, p_expected;
 	memory_16 m_mem, m_expected;
-	
+
 	infra_raw emu = {
 		.cpu	= p_cpu,
 		.memory	= m_mem,

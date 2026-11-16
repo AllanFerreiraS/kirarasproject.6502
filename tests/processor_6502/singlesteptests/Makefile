@@ -1,22 +1,40 @@
+#----------------------------
+#	Bin Programs
+#----------------------------
 CC = gcc
-CFLAGS = -DDEBUG_SINGLESTEPTESTS -Wall -Wextra -g -fsanitize=address -Iprocessor
+C_DEFINES = -DTESTS_SINGLESTEPTESTS
+CFLAGS = -Wall -Wextra -g -fsanitize=address -Iprocessor
+#CA65 = ca65
+#LD65 = ld65
 
-SRC = \
-	./singlesteptests.c \
-	../../emulators/raw/raw.c \
-	../../src/hardwares/processor_6502.c \
-	../../src/hardwares/memory_16.c \
-	../../src/debugger.c \
-	../../src/terminal_ui.c \
-	../../src/disassemble.c \
-	../../thirdparty/cJson/cJSON.c
+#----------------------------
+#	   Folders
+#----------------------------
 
-OUT = ./run_singlesteptests
+#----------------------------
+#	   SOURCES
+#----------------------------
+SRC_PATH = ./../../../src
+EMULATOR_PATH = ./../../../emulators
+THIRDPARTY_PATH = ./../../../thirdparty
 
-all:
-	$(CC) $(CFLAGS) $(SRC) -o $(OUT)
+SRC_CORE = \
+	$(SRC_PATH)/hardwares/processor_6502.c \
+	$(SRC_PATH)/hardwares/memory_16.c \
+	$(EMULATOR_PATH)/raw/raw.c
 
-run: all
-	$(OUT)
+SRC_THIRDPARTY = \
+	$(THIRDPARTY_PATH)/cJson/cJSON.c
 
-.PHONY: run
+#----------------------------
+#	   Files
+#----------------------------
+F_C_MAIN = singlesteptests
+
+#----------------------------
+#      Make Executables
+#----------------------------
+all: singlesteptests
+
+singlesteptests:
+	$(CC) $(C_DEFINES) $(CFLAGS) $(F_C_MAIN).c $(SRC_CORE) $(SRC_THIRDPARTY) -o ./$(F_C_MAIN)
