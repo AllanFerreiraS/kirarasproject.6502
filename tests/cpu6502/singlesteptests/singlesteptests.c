@@ -1,4 +1,4 @@
-#include "./../../../emulators/raw/raw.h"
+#include "./../../../emulators/machine_test/machine_test.h"
 #include "./../../../thirdparty/cJson/cJSON.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -49,8 +49,8 @@ static void 	print_results(passed_failed_counter counter, feedback *feedbacks);
 static uint8_t 	init_test(struct cpu6502 * p_cpu, struct cpu6502 * p_expected, memory_16 * m_mem, memory_16 * m_expected, cJSON **root);
 
 // Main
-static uint8_t 	all_files_test(infra_raw * emulator, infra_raw * emulator_expected);
-static uint8_t 	single_file_test(const char * file, infra_raw * emulator, infra_raw * emulator_expected);
+static uint8_t 	all_files_test(struct machine_test * emulator, struct machine_test * emulator_expected);
+static uint8_t 	single_file_test(const char * file, struct machine_test * emulator, struct machine_test * emulator_expected);
 
 
 void u8_decimal_to_binary_string(uint8_t v, char * b)
@@ -500,7 +500,7 @@ goto_end:
 	return TRUE;
 }
 
-static uint8_t all_files_test(infra_raw * emulator, infra_raw * emulator_expected)
+static uint8_t all_files_test(struct machine_test * emulator, struct machine_test * emulator_expected)
 {
 
 	uint8_t arr[0x100] = {0};
@@ -554,7 +554,7 @@ static uint8_t all_files_test(infra_raw * emulator, infra_raw * emulator_expecte
 	return TRUE;
 }
 
-static uint8_t single_file_test(const char * file, infra_raw * emulator, infra_raw * emulator_expected)
+static uint8_t single_file_test(const char * file, struct machine_test * emulator, struct machine_test * emulator_expected)
 {
 	char * filename = allocate_message_error(); // Preguiça de mudar o nome da função...
 	snprintf(filename, ERROR_MESSAGE_SIZE, "./v1/%s.json", file);
@@ -598,18 +598,18 @@ int main (int argc, char *argv[])
 	struct cpu6502 p_cpu, p_expected;
 	memory_16 m_mem, m_expected;
 
-	infra_raw emu = {
+	struct machine_test emu = {
 		.cpu	= p_cpu,
 		.memory	= m_mem,
 	};
 
-	infra_raw emu_expected = {
+	struct machine_test emu_expected = {
 		.cpu	= p_expected,
 		.memory	= m_expected,
 	};
 
-	emu.cpu.bus		= (buses) { bus_raw_read, bus_raw_write, &emu };
-	emu_expected.cpu.bus	= (buses) { bus_raw_read, bus_raw_write, &emu_expected };
+	machine_test_prepare_cpu(&emu);
+	machine_test_prepare_cpu(&emu_expected);
 
 	cpu6502_init_manual(&(emu.cpu), 0x0000);
 	cpu6502_init_manual(&(emu_expected.cpu), 0x0000);

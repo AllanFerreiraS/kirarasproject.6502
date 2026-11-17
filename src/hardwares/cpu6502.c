@@ -347,13 +347,13 @@ static void nmi_request_update(struct cpu6502 *cpu)
 
 static u8 cpu6502_read(struct cpu6502 *cpu, u16 address)
 {
-	u8 data = cpu->bus.read_fn((void *) cpu->bus.infra, address);
+	u8 data = cpu->bus.read_bus((void *) cpu->bus.emulator, address);
 	//nmi_request_update(cpu);
 	return data;
 }
 static void cpu6502_write(struct cpu6502 *cpu, u16 address, u8 data)
 {
-	cpu->bus.write_fn((void *) cpu->bus.infra, address, data);
+	cpu->bus.write_bus((void *) cpu->bus.emulator, address, data);
 	nmi_request_update(cpu);
 }
 

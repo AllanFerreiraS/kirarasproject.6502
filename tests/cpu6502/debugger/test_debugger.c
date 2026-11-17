@@ -1,4 +1,4 @@
-#include "./../../../emulators/raw/raw.h"
+#include "./../../../emulators/machine_test/machine_test.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -15,12 +15,12 @@ int main(int argc, const char *argv[])
 	struct cpu6502 	cpu;
 	memory_16 	mem;
 
-	infra_raw emu = {
+	struct machine_test emulator = {
 		.cpu 		= cpu,
 		.memory		= mem,
 	};
 
-	raw_run_with_monitor(&emu, 0,file_test, 0x0000);
+	machine_test_monitor_run(&emulator, 0,file_test, 0x0000);
 
 	return 0;
 }

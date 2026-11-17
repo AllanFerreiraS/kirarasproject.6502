@@ -1,12 +1,13 @@
 #ifndef _BUSES_H_
 #define _BUSES_H_
 
+#include "./utils.h"
 #include <stdint.h>
 
 typedef struct {
-	uint8_t	(*read_fn)	(void *infra, uint16_t address);
-	void	(*write_fn)	(void *infra, uint16_t address, uint8_t data);
-	void	*infra;
+	u8	(*read_bus)	(void *emulator, u16 address);
+	void	(*write_bus)	(void *emulator, u16 address, u8 data);
+	void	*emulator;
 } buses;
 
 #endif

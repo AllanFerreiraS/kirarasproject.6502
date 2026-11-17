@@ -1,4 +1,4 @@
-#include "./../../../emulators/raw/raw.h"
+#include "./../../../emulators/machine_test/machine_test.h"
 #include "./../../../frontend/disassemble/disassemble.h"
 #include <stdio.h>
 #include <string.h>
@@ -30,16 +30,13 @@ int main (int argc, const char *argv[])
 	struct cpu6502 		cpu;
 	memory_16		mem;
 	disassemble_asm_list 	asm_list;
-	infra_raw		emu = {
+	struct machine_test	emulator = {
 		.cpu = cpu,
 		.memory = mem,
 	};
 
-
-	if (! write_rom(&(emu.memory), file_path, MEM_ADDR) ) {
-		printf("Error: file \'%s\' not found.\n", file_path);
+	if (! machine_test_prepare_rom(&emulator, file_path, MEM_ADDR))
 		exit(EXIT_FAILURE);
-	}
 
 	if ( strstr(file_path, "6502_functional_test.bin") != NULL)
 		test_type = TEST_FUNCTIONAL;
@@ -57,20 +54,19 @@ int main (int argc, const char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	emu.cpu.bus = (buses) { bus_raw_read, bus_raw_write, &emu  };
-	cpu6502_init_manual(&(emu.cpu), PC_ADDR);
-
+	machine_test_prepare_cpu(&emulator);
+	cpu6502_init_manual(&(emulator.cpu), PC_ADDR);
 	printf("Testing...\n");
 	while (1) {
-		previous_opcode = emu.cpu.reg_pc;
+		previous_opcode = emulator.cpu.reg_pc;
 		counter++;
 
-		cpu6502_opcode_execute(&(emu.cpu));
+		cpu6502_opcode_execute(&(emulator.cpu));
 
 		if (test_type == TEST_INTERRUPT)
-			cpu6502_interrupt_handle_request_if_any(&(emu.cpu));
+			cpu6502_interrupt_handle_request_if_any(&(emulator.cpu));
 
-		if (previous_opcode == emu.cpu.reg_pc)
+		if (previous_opcode == emulator.cpu.reg_pc)
 			break;
 	}
 
@@ -85,25 +81,25 @@ int main (int argc, const char *argv[])
 
 	printf("-------------------------------------------\n");
 	printf("Instructions executed:\t %ld\n", counter);
-	printf("Cycles elapsed:       \t 0x%016lx\n", emu.cpu.cycles);
-	printf("Final PC:             \t 0x%04x\n", emu.cpu.reg_pc);
+	printf("Cycles elapsed:       \t 0x%016lx\n", emulator.cpu.cycles);
+	printf("Final PC:             \t 0x%04x\n", emulator.cpu.reg_pc);
 	printf("-------------------------------------------\n");
 	printf("RESULT:\n");
-	if ((test_type == TEST_FUNCTIONAL) && (emu.cpu.reg_pc == 0x3469)) {
+	if ((test_type == TEST_FUNCTIONAL) && (emulator.cpu.reg_pc == 0x3469)) {
 		printf("\t\t; S U C C E S S ************************************************\n");
                 printf("\t\t; -------------\n");
                 printf("\t\t\t success         ;if you get here everything went well\n");
 		printf("3469 : 4c6934\t >       jmp *           ;test passed, no errors\n");
 		printf("\t\t; S U C C E S S ************************************************\n");
 	}
-	else if ((test_type == TEST_INTERRUPT) && (emu.cpu.reg_pc == 0x6F5)){
+	else if ((test_type == TEST_INTERRUPT) && (emulator.cpu.reg_pc == 0x6F5)){
 		printf("\t\t; S U C C E S S ************************************************\n");
                 printf("\t\t; -------------\n");
                 printf("4C F5 06\t\t success         ;if you get here everything went well\n");
 		printf("\t\t; -------------\n");
 		printf("\t\t; S U C C E S S ************************************************\n");
 	}
-	else if ((test_type == TEST_DECIMAL) && (emu.cpu.reg_pc == 0x044B) && (memory_read(&(emu.memory),0x0B) == 0)) {
+	else if ((test_type == TEST_DECIMAL) && (emulator.cpu.reg_pc == 0x044B) && (memory_read(&(emulator.memory),0x0B) == 0)) {
 		printf("\t\t; S U C C E S S ************************************************\n");
                 printf("\t\t; -------------\n");
                 printf("4C 4B 04\t\t end_of_test      ;jmp *   ;test passed, no errors.\n");

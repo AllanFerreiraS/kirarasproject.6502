@@ -24,6 +24,9 @@
 #define CPU6502_STATUS_FLAG_CAR			0x01	// Carry
 #define CPU6502_STATUS_FLAG_INITIAL_STATE	0x24	// NOEFFECT and INT FLAGS are NOT set
 
+#define CPU6502_FLAG_READ			0x00
+#define CPU6502_FLAG_WRITE			0x01
+
 // Interrupt Pins
 #define CPU6502_RESET				0x00
 #define CPU6502_POWER_UP			0x01
@@ -56,7 +59,7 @@ struct cpu6502 {
 	u8 	reg_y;		// Y
 	u8	reg_sp;		//Stack Pointer
 	u8	reg_p;		//Status Register. Bits: 7:Negative | 6:Overflow | 5:Always 1 | 4:Break Flag | 3:Decimal | 2:Interrupt Disable | 1:Zero | 0:Carry
-	u8	read_write;	//0 for read, 1 for write
+	u8	read_write;
 	u16	reg_pc;		//Program Counter
 
 	u8 	irq_pin;	// Low or High Values

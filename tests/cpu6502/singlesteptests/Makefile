@@ -21,7 +21,7 @@ THIRDPARTY_PATH = ./../../../thirdparty
 SRC_CORE = \
 	$(SRC_PATH)/hardwares/cpu6502.c \
 	$(SRC_PATH)/hardwares/memory_16.c \
-	$(EMULATOR_PATH)/raw/raw.c
+	$(EMULATOR_PATH)/machine_test/machine_test.c
 
 SRC_THIRDPARTY = \
 	$(THIRDPARTY_PATH)/cJson/cJSON.c
