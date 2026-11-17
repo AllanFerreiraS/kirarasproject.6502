@@ -1,6 +1,5 @@
-#include "./../../../include/hardwares/processor_6502.h"
-#include "./../../../include/hardwares/memory_16.h"
 #include "./../../../frontend/disassemble/disassemble.h"
+#include "./../../../include/hardwares/memory_16.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>

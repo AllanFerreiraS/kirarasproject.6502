@@ -102,7 +102,7 @@ void drawn_painel_data(memory_16 * memory)
 	}
 }
 
-void drawn_registers(processor_6502 * processor)
+void drawn_registers(struct cpu6502 *cpu)
 {
 	uint8_t line_pos = REGISTERS_LINE;
 	uint8_t col_pos = REGISTERS_COLUMN + 1;
@@ -111,36 +111,36 @@ void drawn_registers(processor_6502 * processor)
 	tui_move_cursor_coord(line_pos, col_pos);
 	printf("A:");
 	tui_change_terminal_color(COLOR_FORE_GREEN);
-	printf("%02x", processor->reg_a);
+	printf("%02x", cpu->reg_a);
 	tui_terminal_color_default();
 	printf("  X:");
 	tui_change_terminal_color(COLOR_FORE_GREEN);
-	printf("%02x", processor->reg_x);
+	printf("%02x", cpu->reg_x);
 	tui_terminal_color_default();
 	printf("  Y:");
 	tui_change_terminal_color(COLOR_FORE_GREEN);
-	printf("%02x", processor->reg_y);
+	printf("%02x", cpu->reg_y);
 	tui_terminal_color_default();
 
 	// Print the FLAG and CYCLES
-	debugger_print_formated_flags("  FLAG", processor->reg_p);
+	debugger_print_formated_flags("  FLAG", cpu->reg_p);
 	printf("  CYCLES:");
 	tui_change_terminal_color(COLOR_FORE_GREEN);
-	printf("%016lx", processor->cycles);
+	printf("%016lx", cpu->cycles);
 	tui_terminal_color_default();
 
 	// Print the Interrupts
 	tui_move_cursor_coord(++line_pos, col_pos);
 	printf("IRQ=");
 	tui_change_terminal_color(COLOR_FORE_GREEN);
-	printf("%s", (processor->irq_pin == IRQ_LOW_VALUE) ? "LOW" : "HIGH");
+	printf("%s", (cpu->irq_pin == CPU6502_IRQ_LOW) ? "LOW" : "HIGH");
 	tui_terminal_color_default();
 	printf("  NMI=");
 	tui_change_terminal_color(COLOR_FORE_GREEN);
-	printf("%s", (processor->nmi_pin == NMI_LOW_VALUE) ? "LOW" : "HIGH");
+	printf("%s", (cpu->nmi_pin == CPU6502_NMI_LOW) ? "LOW" : "HIGH");
 	tui_terminal_color_default();
 	printf("  |->  REQUESTS: ");
-	if (processor->irq_pin == IRQ_LOW_VALUE) {
+	if (cpu->irq_pin == CPU6502_IRQ_LOW) {
 		tui_change_terminal_color(COLOR_BACK_GREEN);
 		printf("IRQ");
 		tui_terminal_color_default();
@@ -148,7 +148,7 @@ void drawn_registers(processor_6502 * processor)
 		printf("IRQ");
 	}
 	printf("  ");
-	if (processor->nmi_request) {
+	if (cpu->nmi_request) {
 		tui_change_terminal_color(COLOR_BACK_GREEN);
 		printf("NMI");
 		tui_terminal_color_default();
@@ -160,11 +160,11 @@ void drawn_registers(processor_6502 * processor)
 	tui_move_cursor_coord(++line_pos,col_pos);
 	printf("PC:");
 	tui_change_terminal_color(COLOR_FORE_GREEN);
-	printf("0x%04x", processor->reg_pc);
+	printf("0x%04x", cpu->reg_pc);
 	tui_terminal_color_default();
 	printf("  STACK:");
 	tui_change_terminal_color(COLOR_FORE_GREEN);
-	printf("0x%03x", processor->reg_sp);
+	printf("0x%03x", cpu->reg_sp);
 	tui_terminal_color_default();
 }
 
@@ -244,15 +244,15 @@ void debugger_print_formated_flags(const char *label, uint8_t flag)
 	}
 }
 
-void debugger_terminal_run(processor_6502 * processor, memory_16 * memory, disassemble_asm_list *asm_list, uint8_t stop)
+void debugger_terminal_run(struct cpu6502 *cpu, memory_16 * memory, disassemble_asm_list *asm_list, uint8_t stop)
 {
 	drawn_border();
 
 	// LEMBRANDO QUE VAI DEPENDER DO MAPPER DEPOIS DE SER IMPLEMENTADO
-	drawn_asm_text(asm_list, processor->reg_pc);
+	drawn_asm_text(asm_list, cpu->reg_pc);
 
 	drawn_painel_data(memory);
-	drawn_registers(processor);
+	drawn_registers(cpu);
 	drawn_cursor_rest_panel(stop);
 
 	// Update

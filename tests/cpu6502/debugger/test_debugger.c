@@ -12,7 +12,7 @@ int main(int argc, const char *argv[])
 	}
 
 	const char	*file_test = argv[1];
-	processor_6502 	cpu;
+	struct cpu6502 	cpu;
 	memory_16 	mem;
 
 	infra_raw emu = {

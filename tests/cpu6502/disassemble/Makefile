@@ -22,7 +22,7 @@ SRC_PATH = ./../../../src
 FRONTEND_PATH = ./../../../frontend
 
 SRC_CORE = \
-	$(SRC_PATH)/hardwares/processor_6502.c \
+	$(SRC_PATH)/hardwares/cpu6502.c \
 	$(SRC_PATH)/hardwares/memory_16.c
 
 SRC_FRONTEND = \
@@ -37,7 +37,7 @@ F_ASM = disasm
 #----------------------------
 #      Make Executables
 #----------------------------
-all:
+all: test_disasm rom_disasm
 
 test_disasm: $(BUILD_DIR)
 	$(CC) $(CFLAGS) $(F_C_MAIN).c $(SRC_CORE) $(SRC_FRONTEND) -o $(BUILD_DIR)/$(F_C_MAIN)

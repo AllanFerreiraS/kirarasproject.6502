@@ -26,7 +26,7 @@ EMULATOR_PATH = ./../../../emulators
 FRONTEND_PATH = ./../../../frontend
 
 SRC_CORE = \
-	$(SRC_PATH)/hardwares/processor_6502.c \
+	$(SRC_PATH)/hardwares/cpu6502.c \
 	$(SRC_PATH)/hardwares/memory_16.c \
 	$(EMULATOR_PATH)/raw/raw.c
 

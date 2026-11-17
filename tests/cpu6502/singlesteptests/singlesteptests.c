@@ -34,11 +34,11 @@ static char 	* get_json_content(const char * filename);
 static uint8_t 	get_json_test_name(cJSON **test, char ** test_name);
 static uint8_t 	get_json_legal_opcodes(uint8_t *arr, uint16_t *size);
 static uint8_t 	store_json_cycles(cJSON **test, uint16_t **cycles_expected, uint16_t * cycles_size);
-static uint8_t 	store_json_processor_content(processor_6502 * processor, cJSON **test, const char * field);
+static uint8_t 	store_json_processor_content(struct cpu6502 * processor, cJSON **test, const char * field);
 static uint8_t 	store_json_memory_content(memory_16 * memory, cJSON **test, const char * field);
 
 // Comparisons
-static uint8_t 	compare_processor(processor_6502 * p_cpu, processor_6502 * p_expected, char **error_message);
+static uint8_t 	compare_processor(struct cpu6502 * p_cpu, struct cpu6502 * p_expected, char **error_message);
 static uint8_t 	compare_memory(memory_16 * m_mem, memory_16 * m_expected, char **error_message);
 static uint8_t 	compare_cycles(uint16_t *cycles, uint16_t size, uint16_t *cycles_expected, uint16_t size_expected, char **error_message);
 
@@ -46,7 +46,7 @@ static uint8_t 	compare_cycles(uint16_t *cycles, uint16_t size, uint16_t *cycles
 // Init process
 static void 	free_feedbacks(feedback *f, uint16_t size);
 static void 	print_results(passed_failed_counter counter, feedback *feedbacks);
-static uint8_t 	init_test(processor_6502 * p_cpu, processor_6502 * p_expected, memory_16 * m_mem, memory_16 * m_expected, cJSON **root);
+static uint8_t 	init_test(struct cpu6502 * p_cpu, struct cpu6502 * p_expected, memory_16 * m_mem, memory_16 * m_expected, cJSON **root);
 
 // Main
 static uint8_t 	all_files_test(infra_raw * emulator, infra_raw * emulator_expected);
@@ -204,7 +204,7 @@ static uint8_t store_json_cycles(cJSON **test, uint16_t **cycles_expected, uint1
 	return TRUE;
 }
 
-static uint8_t store_json_processor_content(processor_6502 * processor, cJSON **test, const char * field)
+static uint8_t store_json_processor_content(struct cpu6502 * processor, cJSON **test, const char * field)
 {
 	cJSON *content 	= cJSON_GetObjectItemCaseSensitive(*test, field);
 
@@ -308,7 +308,7 @@ static void set_reg_error(const char * reg_name, uint64_t got, uint64_t expected
 	return;
 }
 
-static uint8_t compare_processor(processor_6502 * p_cpu, processor_6502 * p_expected, char **error_message)
+static uint8_t compare_processor(struct cpu6502 * p_cpu, struct cpu6502 * p_expected, char **error_message)
 {
 	if (! (p_cpu->reg_pc == p_expected->reg_pc) ) {
 		set_reg_error("PC", p_cpu->reg_pc, p_expected->reg_pc, error_message);
@@ -411,7 +411,7 @@ static void print_results(passed_failed_counter counter, feedback *feedbacks)
 	}
 }
 
-static uint8_t init_test(processor_6502 * p_cpu, processor_6502 * p_expected, memory_16 * m_mem, memory_16 * m_expected, cJSON **root)
+static uint8_t init_test(struct cpu6502 * p_cpu, struct cpu6502 * p_expected, memory_16 * m_mem, memory_16 * m_expected, cJSON **root)
 {
 	cJSON *test;
 	passed_failed_counter counter;
@@ -459,10 +459,10 @@ static uint8_t init_test(processor_6502 * p_cpu, processor_6502 * p_expected, me
 			return FALSE;
 		}
 
-		processor_6502_execute_opcode(p_cpu);
+		cpu6502_opcode_execute(p_cpu);
 
 		// The SingleStepTests does not simulate INTERRUPTS
-		//processor_6502_response_interrupt_request_if_any(p_cpu);
+		//cpu6502_interrupt_handle_request_if_any(p_cpu);
 
 		if (! compare_processor(p_cpu, p_expected, &error_message) ) {
 			feedbacks[counter.failed].test_name = test_name;
@@ -595,7 +595,7 @@ int main (int argc, char *argv[])
 		return 1;
 	}
 
-	processor_6502 p_cpu, p_expected;
+	struct cpu6502 p_cpu, p_expected;
 	memory_16 m_mem, m_expected;
 
 	infra_raw emu = {
@@ -611,8 +611,8 @@ int main (int argc, char *argv[])
 	emu.cpu.bus		= (buses) { bus_raw_read, bus_raw_write, &emu };
 	emu_expected.cpu.bus	= (buses) { bus_raw_read, bus_raw_write, &emu_expected };
 
-	processor_6502_manual_initialization(&(emu.cpu), 0x0000);
-	processor_6502_manual_initialization(&(emu_expected.cpu), 0x0000);
+	cpu6502_init_manual(&(emu.cpu), 0x0000);
+	cpu6502_init_manual(&(emu_expected.cpu), 0x0000);
 
 	if ( strcmp(argv[1], "all") == 0 ) {
 		if (! all_files_test(&emu, &emu_expected) ) {

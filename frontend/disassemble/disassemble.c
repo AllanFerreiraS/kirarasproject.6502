@@ -1,5 +1,7 @@
+
+// disasm6502 O NOME
 #include "./disassemble.h"
-#include "./../../include/hardwares/processor_6502.h"
+#include "./../../include/hardwares/cpu6502.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -60,7 +62,7 @@ void get_str_opcode_arg(char *buffer, uint8_t *rom, uint8_t addr_mode, uint64_t 
 	(*index)++; // OPCODE Read
 
 	switch (addr_mode) {
-	case PROCESSOR_6502_ADDR_MODE_IMMEDIATE_CODE:
+	case CPU6502_ADDR_MODE_IMMEDIATE_CODE:
 
 		// Special case
 		if ( rom[((*index) - 1)] == OPCODE_BRK )
@@ -70,54 +72,54 @@ void get_str_opcode_arg(char *buffer, uint8_t *rom, uint8_t addr_mode, uint64_t 
 		(void) sprintf(buffer, "#$%02x", op_arg);
 		(*index)++;
 		break;
-	case PROCESSOR_6502_ADDR_MODE_ZERO_PAGE_CODE:
+	case CPU6502_ADDR_MODE_ZERO_PAGE_CODE:
 		op_arg = (uint16_t) rom[(*index)];
 		(void) sprintf(buffer, "$%02x", op_arg);
 		(*index)++;
 		break;
-	case PROCESSOR_6502_ADDR_MODE_ZERO_PAGE_X_CODE:
+	case CPU6502_ADDR_MODE_ZERO_PAGE_X_CODE:
 		op_arg = (uint16_t) rom[(*index)];
 		(void) sprintf(buffer, "$%02x,X", op_arg);
 		(*index)++;
 		break;
-	case PROCESSOR_6502_ADDR_MODE_ZERO_PAGE_Y_CODE:
+	case CPU6502_ADDR_MODE_ZERO_PAGE_Y_CODE:
 		op_arg = (uint16_t) rom[(*index)];
 		(void) sprintf(buffer, "$%02x,Y", op_arg);
 		(*index)++;
 		break;
-	case PROCESSOR_6502_ADDR_MODE_ABSOLUTE_CODE:
+	case CPU6502_ADDR_MODE_ABSOLUTE_CODE:
 		op_arg = (((uint16_t) rom[(*index) + 1]) << 8) | ((uint16_t) rom[(*index)]);
 		(void) sprintf(buffer, "$%04x", op_arg);
 		(*index) = (*index) + 2;
 		break;
-	case PROCESSOR_6502_ADDR_MODE_ABSOLUTE_X_CODE:
+	case CPU6502_ADDR_MODE_ABSOLUTE_X_CODE:
 		op_arg = (((uint16_t) rom[(*index) + 1]) << 8) | ((uint16_t) rom[(*index)]);
 		(void) sprintf(buffer, "$%04x,X", op_arg);
 		(*index) = (*index) + 2;
 		break;
-	case PROCESSOR_6502_ADDR_MODE_ABSOLUTE_Y_CODE:
+	case CPU6502_ADDR_MODE_ABSOLUTE_Y_CODE:
 		op_arg = (((uint16_t) rom[(*index) + 1]) << 8) | ((uint16_t) rom[(*index)]);
 		(void) sprintf(buffer, "$%04x,Y", op_arg);
 		(*index) = (*index) + 2;
 		break;
-	case PROCESSOR_6502_ADDR_MODE_INDIRECT_CODE:
+	case CPU6502_ADDR_MODE_INDIRECT_CODE:
 		op_arg = (((uint16_t) rom[(*index) + 1]) << 8) | ((uint16_t) rom[(*index)]);
 		(void) sprintf(buffer, "($%04x)", op_arg);
 		(*index) = (*index) + 2;
 		break;
-	case PROCESSOR_6502_ADDR_MODE_INDIRECT_X_CODE:
+	case CPU6502_ADDR_MODE_INDIRECT_X_CODE:
 		op_arg = (uint16_t) rom[(*index)];
 		(void) sprintf(buffer, "($%02x,X)", op_arg);
 		(*index)++;
 		break;
-	case PROCESSOR_6502_ADDR_MODE_INDIRECT_Y_CODE:
+	case CPU6502_ADDR_MODE_INDIRECT_Y_CODE:
 		op_arg = (uint16_t) rom[(*index)];
 		(void) sprintf(buffer, "($%02x),Y", op_arg);
 		(*index)++;
 		break;
-	case PROCESSOR_6502_ADDR_MODE_IMPLIED_CODE:
+	case CPU6502_ADDR_MODE_IMPLIED_CODE:
 		break;
-	case PROCESSOR_6502_ADDR_MODE_RELATIVE_CODE:
+	case CPU6502_ADDR_MODE_RELATIVE_CODE:
 
 		// Special cases:
 		if ( rom[(*index) - 1] == OPCODE_JSR ) {
@@ -136,7 +138,7 @@ void get_str_opcode_arg(char *buffer, uint8_t *rom, uint8_t addr_mode, uint64_t 
 
 		(*index)++;
 		break;
-	case PROCESSOR_6502_ADDR_MODE_ERROR_CODE:
+	case CPU6502_ADDR_MODE_ERROR_CODE:
 		break;
 	default:
 		break;
@@ -159,7 +161,7 @@ disassemble_asm_list disassemble(uint8_t *rom, uint64_t rom_size)
 	while (index < rom_size) {
 
 		opcode_index = index; // Get actual OPCODE position
-		(void) processor_6502_get_opcode_infos(rom[opcode_index], &op_name, &mode_name, &mode_code);
+		(void) cpu6502_opcode_get_infos(rom[opcode_index], &op_name, &mode_name, &mode_code);
 
 		get_str_opcode_arg(str_opcode_arg_buffer, rom, mode_code, &index, opcode_index);
 		(void) sprintf(str_assembly, "0x%08lx:  %s %s \t;%s", opcode_index, op_name, str_opcode_arg_buffer, mode_name);

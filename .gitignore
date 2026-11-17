@@ -1,6 +1,2 @@
 .git
-bin/*
-/tests/*.bin
-/tests/rom.o
-/tests/./run_singlesteptests
-/tests/processor_6502/singlesteptests/v1/*.json
+/tests/cpu6502/singlesteptests/v1/*.json

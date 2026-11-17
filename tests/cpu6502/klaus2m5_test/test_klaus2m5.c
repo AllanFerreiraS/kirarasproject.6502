@@ -27,7 +27,7 @@ int main (int argc, const char *argv[])
 	uint16_t 		previous_opcode = 0;
 	uint64_t 		counter = 0;
 	int8_t 			test_type = -1;
-	processor_6502 		cpu;
+	struct cpu6502 		cpu;
 	memory_16		mem;
 	disassemble_asm_list 	asm_list;
 	infra_raw		emu = {
@@ -58,17 +58,17 @@ int main (int argc, const char *argv[])
 	}
 
 	emu.cpu.bus = (buses) { bus_raw_read, bus_raw_write, &emu  };
-	processor_6502_manual_initialization(&(emu.cpu), PC_ADDR);
+	cpu6502_init_manual(&(emu.cpu), PC_ADDR);
 
 	printf("Testing...\n");
 	while (1) {
 		previous_opcode = emu.cpu.reg_pc;
 		counter++;
 
-		processor_6502_execute_opcode(&(emu.cpu));
+		cpu6502_opcode_execute(&(emu.cpu));
 
 		if (test_type == TEST_INTERRUPT)
-			processor_6502_response_interrupt_request_if_any(&(emu.cpu));
+			cpu6502_interrupt_handle_request_if_any(&(emu.cpu));
 
 		if (previous_opcode == emu.cpu.reg_pc)
 			break;
