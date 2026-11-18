@@ -8,10 +8,15 @@
 uint16_t c_cycles[3 * 256] = {0};
 uint16_t c_cycles_i = 0;
 
-u8 machine_test_prepare_rom(struct machine_test *emulator, const char *bin, u16 memory_start)
+u8 machine_test_prepare_rom(struct machine_test *emulator, const char *rom, u16 memory_start)
 {
-	if (! write_rom(&(emulator->memory), bin, memory_start) ) {
-		printf("Error: \'%s\' not found.\n", bin);
+	if (memory_alloc(&(emulator->ram), MEMORY_RAM, U16_SIZE)) {
+		printf("Fatal: It was not possible to allocate memory.\n");
+		return FALSE;
+	}
+
+	if (! memory_rom_burn(&(emulator->ram), rom, memory_start) ) {
+		printf("Error: \'%s\' not found.\n", rom);
 		return FALSE;
 	}
 	return TRUE;
@@ -23,23 +28,25 @@ void machine_test_prepare_cpu(struct machine_test *emulator)
 }
 
 #ifdef FRONTEND_DEBUGGER
-void machine_test_monitor_run(struct machine_test *emulator, u8 step_by_step, const char * bin, u16 memory_start)
+void machine_test_monitor_run(struct machine_test *emulator, u8 step_by_step, const char *rom, u16 memory_start)
 {
-	if (! machine_test_prepare_rom(emulator, bin, memory_start))
+	if (! machine_test_prepare_rom(emulator, rom, memory_start))
 		exit(EXIT_FAILURE);
 
 	disassemble_asm_list asm_list;
-	asm_list = disassemble(emulator->memory.data, MEMORY_16_SIZE);
+
+	// CUIDADOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
+	asm_list = disassemble(emulator->ram.data, emulator->ram.size);
 
 	machine_test_prepare_cpu(emulator);
 	cpu6502_init(&(emulator->cpu), CPU6502_POWER_UP);
 
 	debugger_terminal_prepare();
-	debugger_terminal_run(&(emulator->cpu), &(emulator->memory), &asm_list, step_by_step);
+	debugger_terminal_run(&(emulator->cpu), &(emulator->ram), &asm_list, step_by_step);
 	while(1) {
 
 		cpu6502_opcode_execute(&(emulator->cpu));
-		debugger_terminal_run(&(emulator->cpu), &(emulator->memory), &asm_list, step_by_step);
+		debugger_terminal_run(&(emulator->cpu), &(emulator->ram), &asm_list, step_by_step);
 		cpu6502_interrupt_handle_request_if_any(&(emulator->cpu));
 	}
 	debugger_terminal_finish();
@@ -47,9 +54,9 @@ void machine_test_monitor_run(struct machine_test *emulator, u8 step_by_step, co
 #endif
 
 
-void machine_test_run(struct machine_test *emulator, const char * bin, u16 memory_start)
+void machine_test_run(struct machine_test *emulator, const char *rom, u16 memory_start)
 {
-	if (! machine_test_prepare_rom(emulator, bin, memory_start))
+	if (! machine_test_prepare_rom(emulator, rom, memory_start))
 		exit(EXIT_FAILURE);
 
 	machine_test_prepare_cpu(emulator);
@@ -68,7 +75,7 @@ u8 machine_test_read(void *emulator_void, u16 address)
 	emulator->cpu.cycles++;
 	emulator->cpu.read_write = 0;
 
-	data = memory_read(&(emulator->memory), address);
+	data = memory_read(&(emulator->ram), address);
 
 	#ifdef TESTS_SINGLESTEPTESTS
 		c_cycles[c_cycles_i++] = address;
@@ -85,7 +92,7 @@ void machine_test_write(void *emulator_void, u16 address, u8 data)
 	emulator->cpu.cycles++;
 	emulator->cpu.read_write = 1;
 
-	memory_write(&(emulator->memory), address, data);
+	memory_write(&(emulator->ram), address, data);
 
 	#ifdef TESTS_SINGLESTEPTESTS
 		c_cycles[c_cycles_i++] = address;

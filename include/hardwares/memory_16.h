@@ -1,17 +1,21 @@
 #ifndef MEMORY_16_H_
 #define MEMORY_16_H_
 
-#include <stdint.h>
+#include "./../utils.h"
 
-#define MEMORY_16_SIZE 0x10000 //2^16
+#define	MEMORY_ROM	0
+#define MEMORY_RAM	1
 
-typedef struct {
-	uint8_t data[MEMORY_16_SIZE];
-} memory_16;
+struct memory {
+	u8  *data;
+	u8  type;
+	u32 size;
+};
 
-// Public Functions
-uint8_t memory_read(memory_16 * memory, uint16_t address);
-uint8_t	write_rom(memory_16 * memory, const char *rom_bin, uint16_t addr_start);
-void	memory_write(memory_16 * memory, uint16_t address, uint8_t data);
-void 	print_zero_page(memory_16 * memory);
+u8   memory_alloc(struct memory *m, u8 type, u32 size);
+void memory_free(struct memory *m);
+u8   memory_read(struct memory *m, u32 address);
+void memory_write(struct memory *m, u32 address, u8 data);
+u8   memory_rom_burn(struct memory *m, const char *rom, u32 addr_start);
+void memory_clean(struct memory *m);
 #endif

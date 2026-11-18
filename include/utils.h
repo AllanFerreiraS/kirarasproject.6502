@@ -7,6 +7,11 @@
 #define	FALSE		0
 #define UNUSED(x)	(void)(x)	// Unused variables
 
+#define U8_SIZE		0x100
+#define U16_SIZE	0x10000
+#define U32_SIZE	0x100000000
+#define U64_SIZE	0x10000000000000000
+
 typedef uint8_t		u8;
 typedef	uint16_t	u16;
 typedef uint32_t	u32;
