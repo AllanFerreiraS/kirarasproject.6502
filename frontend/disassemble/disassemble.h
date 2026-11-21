@@ -1,26 +1,26 @@
 #ifndef _DISASSEMBLE_H_
 #define _DISASSEMBLE_H_
 
-#include <stdint.h>
+#include "./../../include/utils.h"
 
-#define DISASSEMBLE_STR_OPCODE_LEN	0x100
+#define DISASM_STR_OPCODE_LEN	0x100
 
-typedef struct str_disassemble_asm_code {
-	uint64_t			index;
-	char 				text[DISASSEMBLE_STR_OPCODE_LEN + 1];
-	struct str_disassemble_asm_code *previous;
-	struct str_disassemble_asm_code	*next;
-} disassemble_asm_code;
+struct disasm_code {
+	u32 index;
+	char 	 text[DISASM_STR_OPCODE_LEN + 1];
+	struct disasm_code *previous;
+	struct disasm_code *next;
+};
 
-typedef struct {
-	disassemble_asm_code *head;
-	disassemble_asm_code *tail;
-} disassemble_asm_list;
+struct disasm_list{
+	struct disasm_code *head;
+	struct disasm_code *tail;
+};
 
-uint8_t disassemble_alloc_asm_code(disassemble_asm_list *list, uint64_t index, char *text);
-uint8_t disassemble_get_asm_code(disassemble_asm_list *list, disassemble_asm_code **explorer, uint64_t index, uint64_t *index_chain);
-uint8_t disassemble_asm_code_next(disassemble_asm_code **code);
-uint8_t disassemble_asm_code_previous(disassemble_asm_code **code);
-disassemble_asm_list disassemble(uint8_t *rom, uint64_t rom_size);
+u8 disasm_alloc_code(struct disasm_list *list, u32 index, char *text);
+u8 disasm_get_code(struct disasm_list *list, struct disasm_code **explorer, u32 index, u32 *index_chain);
+u8 disasm_code_next(struct disasm_code **code);
+u8 disasm_code_previous(struct disasm_code **code);
+struct disasm_list disasm(u8 *rom, u32 rom_size);
 
 #endif

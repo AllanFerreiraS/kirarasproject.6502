@@ -4,43 +4,82 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#define MACHINE_TEST_LABEL_ERROR	"[Machine_Test Error]:"
+
 // Used for SingleStepTest Only. TESTS_SINGLESTEPTESTS should be defined.
-uint16_t c_cycles[3 * 256] = {0};
-uint16_t c_cycles_i = 0;
+u16 c_cycles[3 * 256] = {0};
+u16 c_cycles_i = 0;
 
-u8 machine_test_prepare_rom(struct machine_test *emulator, const char *rom, u16 memory_start)
+
+enum memory_errno machine_test_prepare_memory(struct machine_test *emulator, const char *rom, u16 memory_start)
 {
-	if (memory_alloc(&(emulator->ram), MEMORY_RAM, U16_SIZE)) {
-		printf("Fatal: It was not possible to allocate memory.\n");
-		return FALSE;
-	}
+	enum memory_errno ramstatus;
+	ramstatus = memory_alloc(&(emulator->ram), MEMORY_TYPE_RAM, MEMORY_TARGET_PGR, U16_SIZE);
+	if (ramstatus != MEMORY_ERRNO_OK)
+		return ramstatus;
 
-	if (! memory_rom_burn(&(emulator->ram), rom, memory_start) ) {
-		printf("Error: \'%s\' not found.\n", rom);
-		return FALSE;
-	}
-	return TRUE;
+	ramstatus = memory_rom_burn(&(emulator->ram), rom, memory_start);
+	return ramstatus;
 }
 
-void machine_test_prepare_cpu(struct machine_test *emulator)
+enum cpu6502_errno machine_test_prepare_cpu6502(struct machine_test *emulator)
 {
-	emulator->cpu.bus = (buses){ machine_test_read, machine_test_write, emulator };
+	enum cpu6502_errno cpustatus;
+	cpustatus = cpu6502_bus_prepare(&(emulator->cpu), machine_test_read, machine_test_write, emulator);
+	return cpustatus;
 }
+
+
 
 #ifdef FRONTEND_DEBUGGER
-void machine_test_monitor_run(struct machine_test *emulator, u8 step_by_step, const char *rom, u16 memory_start)
+u8 machine_test_monitor_run(struct machine_test *emulator, u8 step_by_step, const char *rom, u16 memory_start)
 {
-	if (! machine_test_prepare_rom(emulator, rom, memory_start))
-		exit(EXIT_FAILURE);
+	u8 return_status = true;
+	enum memory_errno ramstatus;
+	struct disasm_list asm_list;
 
-	disassemble_asm_list asm_list;
+	ramstatus = machine_test_prepare_memory(emulator, rom, memory_start);
+	if (ramstatus == MEMORY_ERRNO_ALLOC_FAILED) {
+		fprintf(stderr, "%s Memory allocation failed.\n", MACHINE_TEST_LABEL_ERROR);
+		return_status = false;
+		goto stop_running;
+	} else if (ramstatus == MEMORY_ERRNO_WRONG_TYPE) {
+		fprintf(stderr, "%s Wrong Memory Type (ROM or RAM).\n", MACHINE_TEST_LABEL_ERROR);
+		return_status =  false;
+		goto stop_running;
+	} else if (ramstatus == MEMORY_ERRNO_WRONG_TARGET) {
+		fprintf(stderr, "%s Wrong Memory Target (PRG or CHR).\n", MACHINE_TEST_LABEL_ERROR);
+		return_status = false;
+		goto stop_running;
+	} else if (ramstatus == MEMORY_ERRNO_SEGFAULT) {
+		fprintf(stderr, "%s SEGFAULT.\n", MACHINE_TEST_LABEL_ERROR);
+		return_status = false;
+		goto stop_running;
+	} else if (ramstatus == MEMORY_ERRNO_FILE_NULL) {
+		fprintf(stderr, "%s Error opening rom file\n", MACHINE_TEST_LABEL_ERROR);
+		return_status = false;
+		goto stop_running;
+	}
 
-	// CUIDADOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
-	asm_list = disassemble(emulator->ram.data, emulator->ram.size);
+	enum cpu6502_errno cpustatus;
+	cpustatus = machine_test_prepare_cpu6502(emulator);
+	if (cpustatus == CPU6502_ERRNO_BUS_FUNCTION_NULL) {
+		fprintf(stderr, "%s Bus Read and/or Bus Write pointers are NULL\n", MACHINE_TEST_LABEL_ERROR);
+		return_status = false;
+		goto stop_running;
+	}
 
-	machine_test_prepare_cpu(emulator);
+
+	asm_list = disasm(emulator->ram.data, emulator->ram.size);
+
+	if (asm_list.head == NULL) {
+		fprintf(stderr, "%s asm_list is null.\n", MACHINE_TEST_LABEL_ERROR);
+		return_status = false;
+		goto stop_running;
+
+	}
+
 	cpu6502_init(&(emulator->cpu), CPU6502_POWER_UP);
-
 	debugger_terminal_prepare();
 	debugger_terminal_run(&(emulator->cpu), &(emulator->ram), &asm_list, step_by_step);
 	while(1) {
@@ -50,30 +89,64 @@ void machine_test_monitor_run(struct machine_test *emulator, u8 step_by_step, co
 		cpu6502_interrupt_handle_request_if_any(&(emulator->cpu));
 	}
 	debugger_terminal_finish();
+
+stop_running:
+	memory_free(&(emulator->ram));
+	return return_status;
 }
 #endif
 
-
-void machine_test_run(struct machine_test *emulator, const char *rom, u16 memory_start)
+u8 machine_test_run(struct machine_test *emulator, const char *rom, u16 memory_start)
 {
-	if (! machine_test_prepare_rom(emulator, rom, memory_start))
-		exit(EXIT_FAILURE);
+	u8 return_status = true;
 
-	machine_test_prepare_cpu(emulator);
+	enum memory_errno ramstatus;
+	ramstatus = machine_test_prepare_memory(emulator, rom, memory_start);
+	if (ramstatus == MEMORY_ERRNO_ALLOC_FAILED) {
+		fprintf(stderr, "%s Memory allocation failed.\n", MACHINE_TEST_LABEL_ERROR);
+		return_status = false;
+		goto stop_running;
+	} else if (ramstatus == MEMORY_ERRNO_WRONG_TYPE) {
+		fprintf(stderr, "%s Wrong Memory Type (ROM or RAM).\n", MACHINE_TEST_LABEL_ERROR);
+		return_status =  false;
+		goto stop_running;
+	} else if (ramstatus == MEMORY_ERRNO_WRONG_TARGET) {
+		fprintf(stderr, "%s Wrong Memory Target (PRG or CHR).\n", MACHINE_TEST_LABEL_ERROR);
+		return_status = false;
+		goto stop_running;
+	} else if (ramstatus == MEMORY_ERRNO_SEGFAULT) {
+		fprintf(stderr, "%s SEGFAULT.\n", MACHINE_TEST_LABEL_ERROR);
+		return_status = false;
+		goto stop_running;
+	} else if (ramstatus == MEMORY_ERRNO_FILE_NULL) {
+		fprintf(stderr, "%s Error opening rom file\n", MACHINE_TEST_LABEL_ERROR);
+		return_status = false;
+		goto stop_running;
+	}
+
+	enum cpu6502_errno cpustatus;
+	cpustatus = machine_test_prepare_cpu6502(emulator);
+	if (cpustatus == CPU6502_ERRNO_BUS_FUNCTION_NULL) {
+		fprintf(stderr, "%s Bus Read and/or Bus Write pointers are NULL\n", MACHINE_TEST_LABEL_ERROR);
+		return_status = false;
+		goto stop_running;
+	}
+
 	cpu6502_init(&(emulator->cpu), CPU6502_POWER_UP);
 	while(1) {
 		cpu6502_opcode_execute(&(emulator->cpu));
 		cpu6502_interrupt_handle_request_if_any(&(emulator->cpu));
 	}
+
+stop_running:
+	memory_free(&(emulator->ram));
+	return return_status;
 }
 
 u8 machine_test_read(void *emulator_void, u16 address)
 {
 	struct machine_test *emulator = emulator_void;
 	u8 data = 0;
-
-	emulator->cpu.cycles++;
-	emulator->cpu.read_write = 0;
 
 	data = memory_read(&(emulator->ram), address);
 
@@ -88,9 +161,6 @@ u8 machine_test_read(void *emulator_void, u16 address)
 void machine_test_write(void *emulator_void, u16 address, u8 data)
 {
 	struct machine_test *emulator = emulator_void;
-
-	emulator->cpu.cycles++;
-	emulator->cpu.read_write = 1;
 
 	memory_write(&(emulator->ram), address, data);
 

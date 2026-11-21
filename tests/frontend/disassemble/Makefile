@@ -23,7 +23,7 @@ FRONTEND_PATH = ./../../../frontend
 
 SRC_CORE = \
 	$(SRC_PATH)/hardwares/cpu6502.c \
-	$(SRC_PATH)/hardwares/memory_16.c
+	$(SRC_PATH)/hardwares/memory.c
 
 SRC_FRONTEND = \
 	$(FRONTEND_PATH)/disassemble/disassemble.c

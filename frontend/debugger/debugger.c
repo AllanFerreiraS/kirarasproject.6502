@@ -37,7 +37,7 @@
 #define AMOUNT_PRINT_ASM_LINES	23
 #define CURRENT_OPCODE_OFFSET	11
 
-static uint8_t previous_painel_data[PAINEL_DATA_LEN] = {0};
+static u8 previous_painel_data[PAINEL_DATA_LEN] = {0};
 
 
 /*
@@ -48,10 +48,10 @@ static uint8_t previous_painel_data[PAINEL_DATA_LEN] = {0};
  */
 
 
-void update_previous_painel_data(memory_16 * memory)
+void update_previous_painel_data(struct memory * mem)
 {
-	for (uint16_t i = 0; i < PAINEL_DATA_LEN; i++)
-		previous_painel_data[i] = memory_read(memory, i);
+	for (u16 i = 0; i < PAINEL_DATA_LEN; i++)
+		previous_painel_data[i] = memory_read(mem, i);
 }
 
 void drawn_border()
@@ -61,23 +61,23 @@ void drawn_border()
 
 	// Drawn vertical split
 	tui_move_cursor_coord(1, VSPLIT_POSITION);
-	for (uint8_t i = 1; i <= (SCREEN_HEIGHT + 1); i++) {
+	for (u8 i = 1; i <= (SCREEN_HEIGHT + 1); i++) {
 		printf("|");
 		tui_move_cursor(1, MOVE_LEFT);
 		tui_move_cursor(1, MOVE_DOWN);
 	}
 }
 
-void drawn_painel_data(memory_16 * memory)
+void drawn_painel_data(struct memory * mem)
 {
-	uint8_t	line_pos = ZERO_PAGE_LINE;
-	uint8_t col_pos = ZERO_PAGE_COLUMN + 1;
-	uint8_t data = 0;
+	u8	line_pos = ZERO_PAGE_LINE;
+	u8 col_pos = ZERO_PAGE_COLUMN + 1;
+	u8 data = 0;
 
 	tui_move_cursor_coord(line_pos, col_pos);
 	printf("     00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F");
 
-	for (uint16_t i = 0x00; i < PAINEL_DATA_LEN; i++) {
+	for (u16 i = 0x00; i < PAINEL_DATA_LEN; i++) {
 
 		// ADDR
 		if ((i % 0x10) == 0) {
@@ -89,7 +89,7 @@ void drawn_painel_data(memory_16 * memory)
 		}
 
 		// DATA
-		data = memory_read(memory, i);
+		data = memory_read(mem, i);
 		tui_change_terminal_color(COLOR_FORE_GREEN);
 		if (data == previous_painel_data[i]) {
 			printf("%02x ", data);
@@ -104,8 +104,8 @@ void drawn_painel_data(memory_16 * memory)
 
 void drawn_registers(struct cpu6502 *cpu)
 {
-	uint8_t line_pos = REGISTERS_LINE;
-	uint8_t col_pos = REGISTERS_COLUMN + 1;
+	u8 line_pos = REGISTERS_LINE;
+	u8 col_pos = REGISTERS_COLUMN + 1;
 
 	// Print the Registers A, X and Y
 	tui_move_cursor_coord(line_pos, col_pos);
@@ -168,10 +168,10 @@ void drawn_registers(struct cpu6502 *cpu)
 	tui_terminal_color_default();
 }
 
-void drawn_cursor_rest_panel(uint8_t stop)
+void drawn_cursor_rest_panel(u8 stop)
 {
-	uint8_t line_pos = CURSOR_REST_LINE;
-	uint8_t col_pos = CURSOR_REST_COLUMN + 1;
+	u8 line_pos = CURSOR_REST_LINE;
+	u8 col_pos = CURSOR_REST_COLUMN + 1;
 	char stop_flag;
 
 	tui_move_cursor_coord(line_pos, col_pos);
@@ -180,28 +180,28 @@ void drawn_cursor_rest_panel(uint8_t stop)
 		stop_flag = getchar();
 }
 
-void drawn_asm_text(disassemble_asm_list *asm_list, uint64_t index)
+void drawn_asm_text(struct disasm_list *asm_list, u32 index)
 {
-	uint8_t line_pos	= ASM_LINE;
-	uint8_t col_pos 	= ASM_COLUM + 1;
+	u8 line_pos	= ASM_LINE;
+	u8 col_pos 	= ASM_COLUM + 1;
 
-	uint8_t empty_lines	= CURRENT_OPCODE_OFFSET;
-	uint64_t index_chain_ignore = 0;
-	disassemble_asm_code *code;
+	u8 empty_lines	= CURRENT_OPCODE_OFFSET;
+	u32 index_chain_ignore = 0;
+	struct disasm_code *code;
 
-	if (! disassemble_get_asm_code(asm_list, &code, index, &index_chain_ignore) ) {
+	if (! disasm_get_code(asm_list, &code, index, &index_chain_ignore) ) {
 		printf("Error printing assembly code");
 		return;
 	}
 
-	for (uint8_t i = 0; i < CURRENT_OPCODE_OFFSET; i++) {
-		if (! disassemble_asm_code_previous(&code) )
+	for (u8 i = 0; i < CURRENT_OPCODE_OFFSET; i++) {
+		if (! disasm_code_previous(&code) )
 			break;
 		empty_lines--;
 	}
 
 	tui_move_cursor_coord(line_pos, col_pos);
-	for (uint8_t i = 0; i < AMOUNT_PRINT_ASM_LINES; i++) {
+	for (u8 i = 0; i < AMOUNT_PRINT_ASM_LINES; i++) {
 
 		if (i < empty_lines) {
 			printf(" ");
@@ -216,7 +216,7 @@ void drawn_asm_text(disassemble_asm_list *asm_list, uint64_t index)
 		} else {
 			printf("%s", code->text);
 		}
-		disassemble_asm_code_next(&code);
+		disasm_code_next(&code);
 		tui_move_cursor_coord(++line_pos, col_pos);
 	}
 }
@@ -226,13 +226,13 @@ void drawn_asm_text(disassemble_asm_list *asm_list, uint64_t index)
 
 // PUBLIC FUNCTIONS
 
-void debugger_print_formated_flags(const char *label, uint8_t flag)
+void debugger_print_formated_flags(const char *label, u8 flag)
 {
 	char *formated = "NV1BDIZC";
-	uint8_t mask = (1) << 7;
+	u8 mask = (1) << 7;
 
 	printf("%s:", label);
-	for (uint8_t i = 0; i < 8; i++) {
+	for (u8 i = 0; i < 8; i++) {
 		if ((flag & mask) > 0) {
 			tui_change_terminal_color(COLOR_FORE_GREEN);
 			printf("%c", formated[i]);
@@ -244,19 +244,19 @@ void debugger_print_formated_flags(const char *label, uint8_t flag)
 	}
 }
 
-void debugger_terminal_run(struct cpu6502 *cpu, memory_16 * memory, disassemble_asm_list *asm_list, uint8_t stop)
+void debugger_terminal_run(struct cpu6502 *cpu, struct memory * mem, struct disasm_list *asm_list, u8 stop)
 {
 	drawn_border();
 
 	// LEMBRANDO QUE VAI DEPENDER DO MAPPER DEPOIS DE SER IMPLEMENTADO
 	drawn_asm_text(asm_list, cpu->reg_pc);
 
-	drawn_painel_data(memory);
+	drawn_painel_data(mem);
 	drawn_registers(cpu);
 	drawn_cursor_rest_panel(stop);
 
 	// Update
-	update_previous_painel_data(memory);
+	update_previous_painel_data(mem);
 	fflush(stdout);
 
 	if (! stop)

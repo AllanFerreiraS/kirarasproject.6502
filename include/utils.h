@@ -1,10 +1,10 @@
 #ifndef _UTILS_H_
 #define _UTILS_H_
 
+#include <stdlib.h>
 #include <stdint.h>
+#include <stdbool.h>
 
-#define TRUE		1
-#define	FALSE		0
 #define UNUSED(x)	(void)(x)	// Unused variables
 
 #define U8_SIZE		0x100

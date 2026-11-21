@@ -1,19 +1,19 @@
 #include "./../../../emulators/machine_test/machine_test.h"
 #include "./../../../frontend/disassemble/disassemble.h"
+#include "./../../../include/utils.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
 
-#define TEST_FUNCTIONAL	0
-#define	TEST_INTERRUPT	1
-#define	TEST_DECIMAL	2
+#define KLAUS_LABEL_ERROR	"[Klaus2m5 Test Error]:"
 
-#define PC_ADDR		0x0400
-#define MEM_ADDR	0x0000
+#define TEST_FUNCTIONAL		0
+#define	TEST_INTERRUPT		1
+#define	TEST_DECIMAL		2
 
-#define TRUE	1
-#define FALSE	0
+#define PC_ADDR			0x0400
+#define MEM_ADDR		0x0000
 
 int main (int argc, const char *argv[])
 {
@@ -24,19 +24,14 @@ int main (int argc, const char *argv[])
 	}
 
 	const char 		*file_path = argv[1];
-	uint16_t 		previous_opcode = 0;
-	uint64_t 		counter = 0;
-	int8_t 			test_type = -1;
+	u16			previous_opcode = 0;
+	u64			counter = 0;
+	i8 			test_type = -1;
 	struct cpu6502 		cpu;
-	memory_16		mem;
-	disassemble_asm_list 	asm_list;
-	struct machine_test	emulator = {
-		.cpu = cpu,
-		.memory = mem,
-	};
-
-	if (! machine_test_prepare_rom(&emulator, file_path, MEM_ADDR))
-		exit(EXIT_FAILURE);
+	struct memory		mem;
+	struct machine_test	emulator = { .cpu = cpu, .ram = mem };
+	enum   memory_errno ramstatus;
+	enum   cpu6502_errno cpustatus;
 
 	if ( strstr(file_path, "6502_functional_test.bin") != NULL)
 		test_type = TEST_FUNCTIONAL;
@@ -54,7 +49,30 @@ int main (int argc, const char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	machine_test_prepare_cpu(&emulator);
+	ramstatus = machine_test_prepare_memory(&emulator, file_path, MEM_ADDR);
+	if (ramstatus == MEMORY_ERRNO_ALLOC_FAILED) {
+		fprintf(stderr, "%s Memory allocation failed.\n", KLAUS_LABEL_ERROR);
+		exit(EXIT_FAILURE);
+	} else if (ramstatus == MEMORY_ERRNO_WRONG_TYPE) {
+		fprintf(stderr, "%s Wrong Memory Type (ROM or RAM).\n", KLAUS_LABEL_ERROR);
+		exit(EXIT_FAILURE);
+	} else if (ramstatus == MEMORY_ERRNO_WRONG_TARGET) {
+		fprintf(stderr, "%s Wrong Memory Target (PRG or CHR).\n", KLAUS_LABEL_ERROR);
+		exit(EXIT_FAILURE);
+	} else if (ramstatus == MEMORY_ERRNO_SEGFAULT) {
+		fprintf(stderr, "%s SEGFAULT.\n", KLAUS_LABEL_ERROR);
+		exit(EXIT_FAILURE);
+	} else if (ramstatus == MEMORY_ERRNO_FILE_NULL) {
+		fprintf(stderr, "%s Error opening rom file\n", KLAUS_LABEL_ERROR);
+		exit(EXIT_FAILURE);
+	}
+
+	cpustatus = machine_test_prepare_cpu6502(&emulator);
+	if (cpustatus == CPU6502_ERRNO_BUS_FUNCTION_NULL) {
+		fprintf(stderr, "%s Bus Read and/or Bus Write pointers are NULL\n", KLAUS_LABEL_ERROR);
+		exit(EXIT_FAILURE);
+	}
+
 	cpu6502_init_manual(&(emulator.cpu), PC_ADDR);
 	printf("Testing...\n");
 	while (1) {
@@ -99,7 +117,7 @@ int main (int argc, const char *argv[])
 		printf("\t\t; -------------\n");
 		printf("\t\t; S U C C E S S ************************************************\n");
 	}
-	else if ((test_type == TEST_DECIMAL) && (emulator.cpu.reg_pc == 0x044B) && (memory_read(&(emulator.memory),0x0B) == 0)) {
+	else if ((test_type == TEST_DECIMAL) && (emulator.cpu.reg_pc == 0x044B) && (memory_read(&(emulator.ram),0x0B) == 0)) {
 		printf("\t\t; S U C C E S S ************************************************\n");
                 printf("\t\t; -------------\n");
                 printf("4C 4B 04\t\t end_of_test      ;jmp *   ;test passed, no errors.\n");
@@ -109,6 +127,8 @@ int main (int argc, const char *argv[])
 	} else {
 		printf(">> Your test FAILED. Check the your last OPCODE executed and check it in .lst file\n");
 	}
+
+	memory_free(&(emulator.ram));
 
 	return 0;
 }

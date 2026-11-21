@@ -25,7 +25,6 @@
 #include "./../../include/hardwares/cpu6502.h"
 #include <stdio.h>
 #include <string.h>
-#include <stdlib.h>
 
 /*
  * LATER CHECKS:
@@ -334,7 +333,7 @@ static u8 oops(u8 force_oops, u8 condition)
 static void nmi_request_update(struct cpu6502 *cpu)
 {
 	if ( (cpu->nmi_previous == CPU6502_NMI_HIGH) && (cpu->nmi_pin == CPU6502_NMI_LOW) )
-		cpu->nmi_request = TRUE;
+		cpu->nmi_request = true;
 
 	cpu->nmi_previous = cpu->nmi_pin;
 }
@@ -347,12 +346,16 @@ static void nmi_request_update(struct cpu6502 *cpu)
 
 static u8 cpu6502_read(struct cpu6502 *cpu, u16 address)
 {
+	cpu->cycles++;
+	cpu->read_write = CPU6502_FLAG_READ;
 	u8 data = cpu->bus.read_bus((void *) cpu->bus.emulator, address);
 	//nmi_request_update(cpu);
 	return data;
 }
 static void cpu6502_write(struct cpu6502 *cpu, u16 address, u8 data)
 {
+	cpu->cycles++;
+	cpu->read_write = CPU6502_FLAG_WRITE;
 	cpu->bus.write_bus((void *) cpu->bus.emulator, address, data);
 	nmi_request_update(cpu);
 }
@@ -1110,10 +1113,15 @@ static void op_nop(struct cpu6502 *cpu, u16 addr)
 
 
 
-
-
-
 // >> PUBLIC FUNCTIONS <<
+
+enum cpu6502_errno cpu6502_bus_prepare(struct cpu6502 *cpu, u8 (*read)(void *emulator, u16 addr), void (*write)(void *emulator, u16 addr, u8 data), void *emulator)
+{
+	if (read == NULL || write == NULL)
+		return CPU6502_ERRNO_BUS_FUNCTION_NULL;
+	cpu->bus = (struct buses){ read, write, emulator, 0x00 };
+	return CPU6502_ERRNO_OK;
+}
 
 void cpu6502_init(struct cpu6502 *cpu, u8 power_up)
 {
@@ -1128,7 +1136,7 @@ void cpu6502_init(struct cpu6502 *cpu, u8 power_up)
 		cpu->irq_pin	= CPU6502_IRQ_HIGH;
 		cpu->nmi_pin	= CPU6502_NMI_HIGH;
 		cpu->nmi_previous = CPU6502_NMI_HIGH;
-		cpu->nmi_request = FALSE;
+		cpu->nmi_request = false;
 		cpu->cycles	= 0x00;
 	}
 
@@ -1158,22 +1166,21 @@ void cpu6502_init_manual(struct cpu6502 *cpu, u16 reg_pc)
 	cpu->irq_pin	= CPU6502_IRQ_HIGH;
 	cpu->nmi_pin	= CPU6502_NMI_HIGH;
 	cpu->nmi_previous = CPU6502_NMI_HIGH;
-	cpu->nmi_request = FALSE;
+	cpu->nmi_request = false;
 	cpu->cycles = 0x00;
 }
 
-void cpu6502_opcode_execute(struct cpu6502 *cpu)
+enum cpu6502_errno cpu6502_opcode_execute(struct cpu6502 *cpu)
 {
 	u8 opcode = cpu6502_read(cpu, cpu->reg_pc++);
 	struct opcode_entry execute = op_table[opcode];
 
 	// It's crashing when an UNDEFINED OPCODE is accessed
-	if (execute.op == NULL) {
-		printf("UNDEFINED OPCODE...\n");
-		return;
-	}
+	if (execute.op == NULL)
+		return CPU6502_ERRNO_ILLEGAL_OPCODE;
 	u16 address = execute.mode(cpu, execute.force_oops);
 	execute.op(cpu, address);
+	return CPU6502_ERRNO_OK;
 }
 
 void cpu6502_interrupt_handle_request_if_any(struct cpu6502 *cpu)
@@ -1181,7 +1188,7 @@ void cpu6502_interrupt_handle_request_if_any(struct cpu6502 *cpu)
 	if (cpu->nmi_request) {
 		//printf("NMI\n");
 		handle_interrupt_irq_nmi(cpu, CPU6502_INTERRUPT_NMI_LW_ADDR, 0);
-		cpu->nmi_request = FALSE;
+		cpu->nmi_request = false;
 	}
 
 	if ( (cpu->irq_pin == CPU6502_IRQ_LOW) && ((cpu->reg_p & CPU6502_STATUS_FLAG_INT) == 0) ) {
@@ -1196,7 +1203,7 @@ u8 cpu6502_opcode_get_infos(u8 opcode, char **name, char **mode, u8 *mode_code)
 	char *m_name = (char *) malloc( 256 );
 	char *m_mode = (char *) malloc( 256 );
 	u8 i = 0;
-	u8 return_status = TRUE;
+	u8 return_status = true;
 
 	if (op_table[opcode].op_name != NULL) {
 
@@ -1242,10 +1249,40 @@ u8 cpu6502_opcode_get_infos(u8 opcode, char **name, char **mode, u8 *mode_code)
 		strcpy(m_name, "UNKOWN_OPCODE");
 		strcpy(m_mode, "UNKOWN_ADDR_MODE");
 		*mode_code = CPU6502_ADDR_MODE_ERROR_CODE;
-		return_status = FALSE;
+		return_status = false;
 	}
 
 	*name = m_name;
 	*mode = m_mode;
 	return return_status;
+}
+
+u8	cpu6502_rega(struct cpu6502 *cpu)
+{
+	return cpu->reg_a;
+}
+
+u8	cpu6502_regx(struct cpu6502 *cpu)
+{
+	return cpu->reg_x;
+}
+
+u8	cpu6502_regy(struct cpu6502 *cpu)
+{
+	return cpu->reg_y;
+}
+
+u8	cpu6502_regsp(struct cpu6502 *cpu)
+{
+	return cpu->reg_sp;
+}
+
+u8	cpu6502_regp(struct cpu6502 *cpu)
+{
+	return cpu->reg_p;
+}
+
+u16	cpu6502_regpc(struct cpu6502 *cpu)
+{
+	return cpu->reg_pc;
 }

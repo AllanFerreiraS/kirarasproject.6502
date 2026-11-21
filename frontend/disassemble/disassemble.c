@@ -3,7 +3,6 @@
 #include "./disassemble.h"
 #include "./../../include/hardwares/cpu6502.h"
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -22,41 +21,38 @@
 #define OPCODE_BVC		0x50
 #define OPCODE_BVS		0x70
 
-#define TRUE			1
-#define FALSE			0
-
 /*
  * Todo later:
  * -> Show properly OPCODES that uses the Accumulator Addr Mode
  */
 
 
-uint8_t is_opcode_branch(uint8_t opcode)
+u8 is_opcode_branch(u8 opcode)
 {
 	if (opcode == OPCODE_BCC)
-		return TRUE;
+		return true;
 	if (opcode == OPCODE_BCS)
-		return TRUE;
+		return true;
 	if (opcode == OPCODE_BEQ)
-		return TRUE;
+		return true;
 	if (opcode == OPCODE_BNE)
-		return TRUE;
+		return true;
 	if (opcode == OPCODE_BPL)
-		return TRUE;
+		return true;
 	if (opcode == OPCODE_BMI)
-		return TRUE;
+		return true;
 	if (opcode == OPCODE_BVC)
-		return TRUE;
+		return true;
 	if (opcode == OPCODE_BVS)
-		return TRUE;
-	return FALSE;
+		return true;
+	return false;
 }
 
-void get_str_opcode_arg(char *buffer, uint8_t *rom, uint8_t addr_mode, uint64_t *index, uint64_t last_index)
+void get_str_opcode_arg(char *buffer, u8 *rom, u8 addr_mode, u32 *index, u32 last_index)
 {
-	uint16_t op_arg;
+	u16 op_arg;
 
-	for (uint8_t i = 0; i < STR_OPCODE_ARG_LEN + 1; i++)
+	for (u8 i = 0; i < STR_OPCODE_ARG_LEN + 1; i++)
 		buffer[i] = '\0';
 
 	(*index)++; // OPCODE Read
@@ -68,52 +64,52 @@ void get_str_opcode_arg(char *buffer, uint8_t *rom, uint8_t addr_mode, uint64_t 
 		if ( rom[((*index) - 1)] == OPCODE_BRK )
 			break;
 
-		op_arg = (uint16_t) rom[(*index)];
+		op_arg = (u16) rom[(*index)];
 		(void) sprintf(buffer, "#$%02x", op_arg);
 		(*index)++;
 		break;
 	case CPU6502_ADDR_MODE_ZERO_PAGE_CODE:
-		op_arg = (uint16_t) rom[(*index)];
+		op_arg = (u16) rom[(*index)];
 		(void) sprintf(buffer, "$%02x", op_arg);
 		(*index)++;
 		break;
 	case CPU6502_ADDR_MODE_ZERO_PAGE_X_CODE:
-		op_arg = (uint16_t) rom[(*index)];
+		op_arg = (u16) rom[(*index)];
 		(void) sprintf(buffer, "$%02x,X", op_arg);
 		(*index)++;
 		break;
 	case CPU6502_ADDR_MODE_ZERO_PAGE_Y_CODE:
-		op_arg = (uint16_t) rom[(*index)];
+		op_arg = (u16) rom[(*index)];
 		(void) sprintf(buffer, "$%02x,Y", op_arg);
 		(*index)++;
 		break;
 	case CPU6502_ADDR_MODE_ABSOLUTE_CODE:
-		op_arg = (((uint16_t) rom[(*index) + 1]) << 8) | ((uint16_t) rom[(*index)]);
+		op_arg = (((u16) rom[(*index) + 1]) << 8) | ((u16) rom[(*index)]);
 		(void) sprintf(buffer, "$%04x", op_arg);
 		(*index) = (*index) + 2;
 		break;
 	case CPU6502_ADDR_MODE_ABSOLUTE_X_CODE:
-		op_arg = (((uint16_t) rom[(*index) + 1]) << 8) | ((uint16_t) rom[(*index)]);
+		op_arg = (((u16) rom[(*index) + 1]) << 8) | ((u16) rom[(*index)]);
 		(void) sprintf(buffer, "$%04x,X", op_arg);
 		(*index) = (*index) + 2;
 		break;
 	case CPU6502_ADDR_MODE_ABSOLUTE_Y_CODE:
-		op_arg = (((uint16_t) rom[(*index) + 1]) << 8) | ((uint16_t) rom[(*index)]);
+		op_arg = (((u16) rom[(*index) + 1]) << 8) | ((u16) rom[(*index)]);
 		(void) sprintf(buffer, "$%04x,Y", op_arg);
 		(*index) = (*index) + 2;
 		break;
 	case CPU6502_ADDR_MODE_INDIRECT_CODE:
-		op_arg = (((uint16_t) rom[(*index) + 1]) << 8) | ((uint16_t) rom[(*index)]);
+		op_arg = (((u16) rom[(*index) + 1]) << 8) | ((u16) rom[(*index)]);
 		(void) sprintf(buffer, "($%04x)", op_arg);
 		(*index) = (*index) + 2;
 		break;
 	case CPU6502_ADDR_MODE_INDIRECT_X_CODE:
-		op_arg = (uint16_t) rom[(*index)];
+		op_arg = (u16) rom[(*index)];
 		(void) sprintf(buffer, "($%02x,X)", op_arg);
 		(*index)++;
 		break;
 	case CPU6502_ADDR_MODE_INDIRECT_Y_CODE:
-		op_arg = (uint16_t) rom[(*index)];
+		op_arg = (u16) rom[(*index)];
 		(void) sprintf(buffer, "($%02x),Y", op_arg);
 		(*index)++;
 		break;
@@ -123,14 +119,14 @@ void get_str_opcode_arg(char *buffer, uint8_t *rom, uint8_t addr_mode, uint64_t 
 
 		// Special cases:
 		if ( rom[(*index) - 1] == OPCODE_JSR ) {
-			op_arg = (((uint16_t) rom[(*index) + 1]) << 8) | ((uint16_t) rom[(*index)]);
+			op_arg = (((u16) rom[(*index) + 1]) << 8) | ((u16) rom[(*index)]);
 			(void) sprintf(buffer, "$%04x", op_arg);
 			(*index) = (*index) + 2;
 			break;
 		}
 		// If it is a BRANCH
 		if ( is_opcode_branch(rom[(*index) - 1]) ) {
-			op_arg = ((uint16_t) last_index + (uint16_t) 2) + (int8_t) rom[(*index)];
+			op_arg = ((u16) last_index + (u16) 2) + (i8) rom[(*index)];
 			(void) sprintf(buffer, "$%04x", op_arg);
 			(*index)++;
 			break;
@@ -145,18 +141,18 @@ void get_str_opcode_arg(char *buffer, uint8_t *rom, uint8_t addr_mode, uint64_t 
 	}
 }
 
-disassemble_asm_list disassemble(uint8_t *rom, uint64_t rom_size)
+struct disasm_list disasm(u8 *rom, u32 rom_size)
 {
 	char 		*op_name;
 	char 		*mode_name;
-	uint8_t		mode_code;
+	u8		mode_code;
 	char 		str_opcode_arg_buffer[STR_OPCODE_ARG_LEN + 1];
-	char 		str_assembly[DISASSEMBLE_STR_OPCODE_LEN + 1];
+	char 		str_assembly[DISASM_STR_OPCODE_LEN + 1];
 
-	uint64_t	index 	 	= 0x0000;
-	uint64_t	opcode_index 	= 0x0000;
+	u32	index 	 	= 0x0000;
+	u32	opcode_index 	= 0x0000;
 
-	disassemble_asm_list list = { .head = NULL, .tail = NULL };
+	struct disasm_list list = { .head = NULL, .tail = NULL };
 
 	while (index < rom_size) {
 
@@ -164,9 +160,9 @@ disassemble_asm_list disassemble(uint8_t *rom, uint64_t rom_size)
 		(void) cpu6502_opcode_get_infos(rom[opcode_index], &op_name, &mode_name, &mode_code);
 
 		get_str_opcode_arg(str_opcode_arg_buffer, rom, mode_code, &index, opcode_index);
-		(void) sprintf(str_assembly, "0x%08lx:  %s %s \t;%s", opcode_index, op_name, str_opcode_arg_buffer, mode_name);
+		(void) sprintf(str_assembly, "0x%08x:  %s %s \t;%s", opcode_index, op_name, str_opcode_arg_buffer, mode_name);
 
-		if (! disassemble_alloc_asm_code(&list, opcode_index, str_assembly) ) {
+		if (! disasm_alloc_code(&list, opcode_index, str_assembly) ) {
 			perror("Memory Allocation");
 			free(op_name);
 			free(mode_name);
@@ -179,16 +175,16 @@ disassemble_asm_list disassemble(uint8_t *rom, uint64_t rom_size)
 }
 
 
-uint8_t disassemble_alloc_asm_code(disassemble_asm_list *list, uint64_t index, char *text)
+u8 disasm_alloc_code(struct disasm_list *list, u32 index, char *text)
 {
-	uint16_t end_str_index = 0;
-	disassemble_asm_code *data = (disassemble_asm_code *) malloc( sizeof(disassemble_asm_code) );
-	disassemble_asm_code *previous = NULL;
+	u16 end_str_index = 0;
+	struct disasm_code *data = (struct disasm_code *) malloc( sizeof(struct disasm_code) );
+	struct disasm_code *previous = NULL;
 
 	if (data == NULL)
-		return FALSE;
+		return false;
 
-	for (uint16_t i = 0; i < DISASSEMBLE_STR_OPCODE_LEN; i++) {
+	for (u16 i = 0; i < DISASM_STR_OPCODE_LEN; i++) {
 		data->text[i] = text[i];
 		end_str_index = i;
 	}
@@ -206,42 +202,42 @@ uint8_t disassemble_alloc_asm_code(disassemble_asm_list *list, uint64_t index, c
 		list->tail 		= list->tail->next;
 		list->tail->previous	= previous;
 	}
-	return TRUE;
+	return true;
 }
 
-uint8_t disassemble_get_asm_code(disassemble_asm_list *list, disassemble_asm_code **explorer, uint64_t index, uint64_t *index_chain)
+u8 disasm_get_code(struct disasm_list *list, struct disasm_code **explorer, u32 index, u32 *index_chain)
 {
 	// Reset all infos
 	*index_chain 	= 0;
 	*explorer	= list->head;
 
-	while (TRUE) {
+	while (true) {
 
 		if (*explorer == NULL)
-			return FALSE;
+			return false;
 
 		if ((*explorer)->index == index)
-			return TRUE;
+			return true;
 		else
 			*explorer = (*explorer)->next;
 		(*index_chain)++;
 	}
 }
 
-uint8_t disassemble_asm_code_next(disassemble_asm_code **code)
+u8 disasm_code_next(struct disasm_code **code)
 {
 	if ((*code)->next == NULL)
-		return FALSE;
+		return false;
 
 	*code = (*code)->next;
-	return TRUE;
+	return true;
 }
 
-uint8_t disassemble_asm_code_previous(disassemble_asm_code **code)
+u8 disasm_code_previous(struct disasm_code **code)
 {
 	if ((*code)->previous == NULL)
-		return FALSE;
+		return false;
 
 	*code = (*code)->previous;
-	return TRUE;
+	return true;
 }

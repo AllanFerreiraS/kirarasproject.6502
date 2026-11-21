@@ -3,7 +3,6 @@
 
 #include "./../buses.h"
 #include "./../utils.h"
-#include <stdint.h>
 
 // Stack Pointer Start Index
 #define CPU6502_STACK_LOWER_ADDR		0x100
@@ -53,27 +52,43 @@
 // Others
 #define CPU6502_OPCODES_AMOUNT			0x100
 
+enum cpu6502_errno {
+	CPU6502_ERRNO_OK = 0,
+	CPU6502_ERRNO_ILLEGAL_OPCODE,
+	CPU6502_ERRNO_BUS_FUNCTION_NULL
+};
+
 struct cpu6502 {
 	u8	reg_a;		// A
 	u8 	reg_x;		// X
 	u8 	reg_y;		// Y
 	u8	reg_sp;		//Stack Pointer
-	u8	reg_p;		//Status Register. Bits: 7:Negative | 6:Overflow | 5:Always 1 | 4:Break Flag | 3:Decimal | 2:Interrupt Disable | 1:Zero | 0:Carry
-	u8	read_write;
+	u8	reg_p;		//Status Register
 	u16	reg_pc;		//Program Counter
 
 	u8 	irq_pin;	// Low or High Values
 	u8	nmi_pin;	// Low or High Values
 	u8	nmi_previous;	// Low or High Values
 	u8	nmi_request;	// TRUE or FALSE
+
+	u8	read_write;
 	u64	cycles;
-	buses	bus;
+	struct	buses bus;
 };
 
+enum	cpu6502_errno cpu6502_bus_prepare(struct cpu6502 *cpu, u8 (*read)(void *emulator, u16 addr), void (*write)(void *emulator, u16 addr, u8 data), void *emulator);
 void	cpu6502_init(struct cpu6502 *processor, u8 power_up);
-void 	cpu6502_init_manual(struct cpu6502 *processor, u16 reg_pc);
-void 	cpu6502_opcode_execute(struct cpu6502 *processor);
+void	cpu6502_init_manual(struct cpu6502 *processor, u16 reg_pc);
+enum	cpu6502_errno cpu6502_opcode_execute(struct cpu6502 *processor);
 void	cpu6502_interrupt_handle_request_if_any(struct cpu6502 *processor);
 u8	cpu6502_opcode_get_infos(u8 opcode, char **name, char **mode, u8 *mode_code);
+
+u8	cpu6502_rega(struct cpu6502 *cpu);
+u8	cpu6502_regx(struct cpu6502 *cpu);
+u8	cpu6502_regy(struct cpu6502 *cpu);
+u8	cpu6502_regsp(struct cpu6502 *cpu);
+u8	cpu6502_regp(struct cpu6502 *cpu);
+u16	cpu6502_regpc(struct cpu6502 *cpu);
+u8	cpu6502_read_write_status(struct cpu6502 *cpu);
 
 #endif
